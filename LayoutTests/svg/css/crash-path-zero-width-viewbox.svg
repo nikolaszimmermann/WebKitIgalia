@@ -10,5 +10,5 @@
       testRunner.dumpAsText();
   </script>
   <polyline points="1 1,2 2"></polyline>
-  <text x="0" y="0">PASS</text>
+  <text x="0" y="0">PASS (if no crash in debug build)</text>
 </svg>

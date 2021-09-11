@@ -70,14 +70,14 @@ function selectRange(id, start, end, expectedText) {
         var absEndPos = toAbsoluteCoordinates(endPos, element);
 
         // Move to selection origin and hold down mouse
-        eventSender.mouseMoveTo(absStartPos.x, absStartPos.y);
+        eventSender.mouseMoveTo(Math.ceil(absStartPos.x), Math.ceil(absStartPos.y));
         eventSender.mouseDown();
 
         // Move again to start selection
-        eventSender.mouseMoveTo(absStartPos.x, absStartPos.y);
+        eventSender.mouseMoveTo(Math.ceil(absStartPos.x), Math.ceil(absStartPos.y));
 
         // Move to end location and release mouse
-        eventSender.mouseMoveTo(absEndPos.x, absEndPos.y);
+        eventSender.mouseMoveTo(Math.ceil(absEndPos.x), Math.ceil(absEndPos.y));
         eventSender.mouseUp();
 
         endPos.x = xOld;
