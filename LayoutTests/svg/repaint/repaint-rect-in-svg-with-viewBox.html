@@ -1,0 +1,18 @@
+<!doctype html>
+<head>
+	<script src="../../fast/repaint/resources/text-based-repaint.js" type="text/javascript"></script>
+	<script>
+	function repaintTest() {
+		document.getElementById("rect").y.baseVal.value = 500;
+	}
+	</script>
+	<style>
+	</style>
+</head>
+<body onload="runRepaintTest()">
+	<div style="border: 1px solid red; margin: 2px;">
+		<svg viewBox="0 0 4800 3600" width="480" height="360" style="border: 1px solid black; margin: 2px;">
+			<rect id="rect" x="500" y="0" width="500" height="500" fill="green"/>
+		</svg>
+	</div>
+</body>

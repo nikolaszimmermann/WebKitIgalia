@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<body style="margin: 0;" onload="repaintTest()">
+  <div style="clip-path: url(#clipper); width:500px; height:200px; background:lime;">
+    <div style="height:200px;"></div>
+    <div style="height:200px; background:blue;"></div>
+  </div>
+
+  <svg width="800" height="600">
+    <clipPath id="clipper">
+      <rect x="0" y="0" width="100" height="150"/>
+      <rect x="100" y="0" width="100" height="300"/>
+    </clipPath>
+  </svg>
+
+  <script>var zoomCount = 2; window.shouldZoomOut = true;</script>
+  <script src="../resources/testPageZoom.js"></script>
+</body>
+</html>
