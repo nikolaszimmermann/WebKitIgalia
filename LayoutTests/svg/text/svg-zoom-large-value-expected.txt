@@ -1,2 +1,8 @@
-PASS
-
+layer at (0,0) size 33554431x33554431
+  RenderView at (0,0) size 785x585
+layer at (0,0) size 785x33554431
+  RenderBlock {html} at (0,0) size 785x33554431
+    RenderBody {body} at (8,8) size 769x33554423
+      RenderText {#text} at (0,0) size 0x0
+layer at (8,8) size 33554431x33554431 backgroundClip at (8,8) size 33554424x33554424 clip at (0,0) size 0x0
+  RenderSVGRoot {svg} at (8,8) size 0x0

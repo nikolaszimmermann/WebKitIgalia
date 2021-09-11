@@ -7,8 +7,8 @@ On success, you will see a series of "PASS" messages, followed by "TEST COMPLETE
 container location: (607, 107)
 Face role: AXRole: AXButton
 Face label: AXDescription: face
-FaceX: 0
-FaceY: 0
+FaceX: 1.5
+FaceY: 1.5
 
 
 Eye role: AXRole: AXButton
@@ -25,13 +25,13 @@ NoseY: 206
 
 Mouth role: AXRole: AXButton
 Mouth label: AXDescription: smile
-MouthX: 115
-MouthY: 275
+MouthX: 121.5
+MouthY: 281
 
 
 Text role: AXRole: AXStaticText
-TextX/10: 15
-TextY/10: 11
+TextX/10: 30
+TextY/10: 23
 
 
 Image role: AXRole: AXImage

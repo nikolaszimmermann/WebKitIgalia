@@ -2,332 +2,482 @@ layer at (0,0) size 800x600
   RenderView at (0,0) size 800x600
 layer at (0,0) size 800x600
   RenderSVGRoot {svg} at (0,0) size 800x600
-    RenderSVGHiddenContainer {defs} at (0,0) size 0x0
-    RenderSVGContainer {g} at (67,20) size 670x455
-      RenderSVGText {text} at (225,12) size 30x23 contains 1 chunk(s)
-        RenderSVGInlineText {#text} at (0,0) size 30x23
-          chunk 1 (middle anchor) text run 1 at (225.15,30.00) startOffset 0 endOffset 4 width 29.69: "text"
-      RenderSVGContainer {g} at (67,101) size 670x374 [transform={m=((1.00,0.00)(0.00,1.00)) t=(80.00,80.00)}]
-        RenderSVGContainer {g} at (67,154) size 108x319 [transform={m=((1.00,0.00)(0.00,1.00)) t=(20.00,10.00)}]
-          RenderSVGText {text} at (-49,2) size 54x17 contains 1 chunk(s)
-            RenderSVGInlineText {#text} at (0,0) size 54x16
-              chunk 1 (end anchor) text run 1 at (-48.65,15.00) startOffset 0 endOffset 9 width 53.65: "transform"
-          RenderSVGText {text} at (-58,37) size 63x17 contains 1 chunk(s)
-            RenderSVGInlineText {#text} at (0,0) size 63x16
-              chunk 1 (end anchor) text run 1 at (-57.83,50.00) startOffset 0 endOffset 11 width 62.83: "text-anchor"
-          RenderSVGText {text} at (-44,72) size 49x17 contains 1 chunk(s)
-            RenderSVGInlineText {#text} at (0,0) size 49x16
-              chunk 1 (end anchor) text run 1 at (-43.28,85.00) startOffset 0 endOffset 9 width 48.28: "font-size"
-          RenderSVGText {text} at (-58,107) size 63x17 contains 1 chunk(s)
-            RenderSVGInlineText {#text} at (0,0) size 63x16
-              chunk 1 (end anchor) text run 1 at (-57.85,120.00) startOffset 0 endOffset 11 width 62.85: "font-family"
-          RenderSVGText {text} at (-48,142) size 53x17 contains 1 chunk(s)
-            RenderSVGInlineText {#text} at (0,0) size 53x16
-              chunk 1 (end anchor) text run 1 at (-47.89,155.00) startOffset 0 endOffset 10 width 52.89: "font-style"
-          RenderSVGText {text} at (-60,177) size 65x17 contains 1 chunk(s)
-            RenderSVGInlineText {#text} at (0,0) size 65x16
-              chunk 1 (end anchor) text run 1 at (-59.38,190.00) startOffset 0 endOffset 11 width 64.38: "font-weight"
-        RenderSVGContainer {g} at (286,101) size 433x27 [transform={m=((1.00,0.00)(0.00,1.00)) t=(90.00,-10.00)}]
-          RenderSVGText {text} at (1,-10) size 38x17 contains 1 chunk(s)
-            RenderSVGInlineText {#text} at (0,0) size 37x16
-              chunk 1 (middle anchor) text run 1 at (1.87,3.00) startOffset 0 endOffset 6 width 36.26: "<text>"
-          RenderSVGText {text} at (123,-10) size 24x17 contains 1 chunk(s)
-            RenderSVGInlineText {#text} at (0,0) size 23x16
-              chunk 1 (middle anchor) text run 1 at (123.77,3.00) startOffset 0 endOffset 3 width 22.47: "<g>"
-          RenderSVGText {text} at (239,-10) size 22x17 contains 1 chunk(s)
-            RenderSVGInlineText {#text} at (0,0) size 22x16
-              chunk 1 (middle anchor) text run 1 at (239.15,3.00) startOffset 0 endOffset 3 width 21.69: "<a>"
-        RenderSVGContainer {g} at (283,145) size 454x330 [transform={m=((1.00,0.00)(0.00,1.00)) t=(80.00,5.00)}]
-          RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-            RenderSVGInlineText {#text} at (0,0) size 15x23
-              chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-          RenderSVGContainer {g} at (283,145) size 441x39
-            RenderSVGHiddenContainer {defs} at (0,0) size 0x0
-              RenderSVGContainer {g} at (283,145) size 75x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-            RenderSVGContainer {use} at (283,145) size 75x39
-              RenderSVGContainer {g} at (283,145) size 75x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-            RenderSVGContainer {use} at (466,145) size 75x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(110.00,0.00)}]
-              RenderSVGContainer {g} at (466,145) size 75x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-            RenderSVGContainer {use} at (650,145) size 74x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(220.00,0.00)}]
-              RenderSVGContainer {g} at (650,145) size 74x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-            RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-              RenderSVGInlineText {#text} at (0,0) size 15x23
-                chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-              RenderSVGInlineText {#text} at (0,0) size 0x0
-            RenderSVGContainer {g} at (516,145) size 25x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(140.00,0.00)}]
-              RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                RenderSVGInlineText {#text} at (0,0) size 15x23
-                  chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-            RenderSVGContainer {a} at (700,145) size 24x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(250.00,0.00)}]
-              RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                RenderSVGInlineText {#text} at (0,0) size 15x23
-                  chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-          RenderSVGContainer {g} at (283,203) size 434x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(0.00,35.00)}]
-            RenderSVGHiddenContainer {defs} at (0,0) size 0x0
-              RenderSVGContainer {g} at (283,203) size 67x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (-5,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 (end anchor) text run 1 at (-4.30,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-            RenderSVGContainer {use} at (283,203) size 67x39
-              RenderSVGContainer {g} at (283,203) size 67x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (-5,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 (end anchor) text run 1 at (-4.30,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-            RenderSVGContainer {use} at (466,203) size 68x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(110.00,0.00)}]
-              RenderSVGContainer {g} at (466,203) size 68x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (-5,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 (end anchor) text run 1 at (-4.30,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-            RenderSVGContainer {use} at (650,203) size 67x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(220.00,0.00)}]
-              RenderSVGContainer {g} at (650,203) size 67x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (-5,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 (end anchor) text run 1 at (-4.30,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-            RenderSVGText {text} at (-5,2) size 15x23 contains 1 chunk(s)
-              RenderSVGInlineText {#text} at (0,0) size 15x23
-                chunk 1 (end anchor) text run 1 at (-4.30,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-              RenderSVGInlineText {#text} at (0,0) size 0x0
-              RenderSVGInlineText {#text} at (0,0) size 0x0
-            RenderSVGContainer {g} at (509,203) size 25x39
-              RenderSVGText {text} at (105,2) size 15x23 contains 1 chunk(s)
-                RenderSVGInlineText {#text} at (0,0) size 15x23
-                  chunk 1 (end anchor) text run 1 at (105.70,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGInlineText {#text} at (0,0) size 0x0
-            RenderSVGContainer {a} at (692,203) size 25x39
-              RenderSVGText {text} at (215,2) size 15x23 contains 1 chunk(s)
-                RenderSVGInlineText {#text} at (0,0) size 15x23
-                  chunk 1 (end anchor) text run 1 at (215.70,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGInlineText {#text} at (0,0) size 0x0
-          RenderSVGContainer {g} at (283,246) size 454x59 [transform={m=((1.00,0.00)(0.00,1.00)) t=(0.00,70.00)}]
-            RenderSVGHiddenContainer {defs} at (0,0) size 0x0
-              RenderSVGContainer {g} at (283,246) size 87x59
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (40,-8) size 22x36 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 22x35
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-            RenderSVGContainer {use} at (283,246) size 87x59
-              RenderSVGContainer {g} at (283,246) size 87x59
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (40,-8) size 22x36 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 22x35
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-            RenderSVGContainer {use} at (466,246) size 87x59 [transform={m=((1.00,0.00)(0.00,1.00)) t=(110.00,0.00)}]
-              RenderSVGContainer {g} at (466,246) size 87x59
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (40,-8) size 22x36 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 22x35
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-            RenderSVGContainer {use} at (650,246) size 87x59 [transform={m=((1.00,0.00)(0.00,1.00)) t=(220.00,0.00)}]
-              RenderSVGContainer {g} at (650,246) size 87x59
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (40,-8) size 22x36 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 22x35
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-            RenderSVGText {text} at (10,-8) size 22x36 contains 1 chunk(s)
-              RenderSVGInlineText {#text} at (0,0) size 22x35
-                chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-              RenderSVGInlineText {#text} at (0,0) size 0x0
-              RenderSVGInlineText {#text} at (0,0) size 0x0
-            RenderSVGContainer {g} at (516,246) size 37x59
-              RenderSVGText {text} at (120,-8) size 22x36 contains 1 chunk(s)
-                RenderSVGInlineText {#text} at (0,0) size 22x35
-                  chunk 1 text run 1 at (120.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-                RenderSVGInlineText {#text} at (0,0) size 0x0
-            RenderSVGContainer {a} at (700,246) size 37x59
-              RenderSVGText {text} at (230,-8) size 22x36 contains 1 chunk(s)
-                RenderSVGInlineText {#text} at (0,0) size 22x35
-                  chunk 1 text run 1 at (230.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-                RenderSVGInlineText {#text} at (0,0) size 0x0
-          RenderSVGContainer {g} at (283,303) size 454x60 [transform={m=((1.00,0.00)(0.00,1.00)) t=(0.00,105.00)}]
-            RenderSVGHiddenContainer {defs} at (0,0) size 0x0
-              RenderSVGContainer {g} at (283,303) size 87x60
-                RenderSVGText {text} at (10,-8) size 21x35 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 21x35
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 20.01: "A"
-                RenderSVGText {text} at (40,-8) size 22x36 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 22x35
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-            RenderSVGContainer {use} at (283,303) size 87x60
-              RenderSVGContainer {g} at (283,303) size 87x60
-                RenderSVGText {text} at (10,-8) size 21x35 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 21x35
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 20.01: "A"
-                RenderSVGText {text} at (40,-8) size 22x36 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 22x35
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-            RenderSVGContainer {use} at (466,303) size 87x60 [transform={m=((1.00,0.00)(0.00,1.00)) t=(110.00,0.00)}]
-              RenderSVGContainer {g} at (466,303) size 87x60
-                RenderSVGText {text} at (10,-8) size 21x35 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 21x35
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 20.01: "A"
-                RenderSVGText {text} at (40,-8) size 22x36 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 22x35
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-            RenderSVGContainer {use} at (650,303) size 87x60 [transform={m=((1.00,0.00)(0.00,1.00)) t=(220.00,0.00)}]
-              RenderSVGContainer {g} at (650,303) size 87x60
-                RenderSVGText {text} at (10,-8) size 21x35 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 21x35
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 20.01: "A"
-                RenderSVGText {text} at (40,-8) size 22x36 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 22x35
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-            RenderSVGText {text} at (10,-8) size 22x36 contains 1 chunk(s)
-              RenderSVGInlineText {#text} at (0,0) size 22x35
-                chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-              RenderSVGInlineText {#text} at (0,0) size 0x0
-              RenderSVGInlineText {#text} at (0,0) size 0x0
-            RenderSVGContainer {g} at (516,304) size 37x59 [transform={m=((1.00,0.00)(0.00,1.00)) t=(110.00,0.00)}]
-              RenderSVGText {text} at (10,-8) size 22x36 contains 1 chunk(s)
-                RenderSVGInlineText {#text} at (0,0) size 22x35
-                  chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-                RenderSVGInlineText {#text} at (0,0) size 0x0
-            RenderSVGContainer {a} at (700,304) size 37x59 [transform={m=((1.00,0.00)(0.00,1.00)) t=(220.00,0.00)}]
-              RenderSVGText {text} at (10,-8) size 22x36 contains 1 chunk(s)
-                RenderSVGInlineText {#text} at (0,0) size 22x35
-                  chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
-                RenderSVGInlineText {#text} at (0,0) size 0x0
-          RenderSVGContainer {g} at (283,378) size 438x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(0.00,140.00)}]
-            RenderSVGHiddenContainer {defs} at (0,0) size 0x0
-              RenderSVGContainer {g} at (283,378) size 71x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (40,2) size 13x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 13x23
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
-            RenderSVGContainer {use} at (283,378) size 71x39
-              RenderSVGContainer {g} at (283,378) size 71x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (40,2) size 13x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 13x23
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
-            RenderSVGContainer {use} at (466,378) size 71x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(110.00,0.00)}]
-              RenderSVGContainer {g} at (466,378) size 71x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (40,2) size 13x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 13x23
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
-            RenderSVGContainer {use} at (650,378) size 71x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(220.00,0.00)}]
-              RenderSVGContainer {g} at (650,378) size 71x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (40,2) size 13x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 13x23
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
-            RenderSVGText {text} at (10,2) size 13x23 contains 1 chunk(s)
-              RenderSVGInlineText {#text} at (0,0) size 13x23
-                chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
-              RenderSVGInlineText {#text} at (0,0) size 0x0
-              RenderSVGInlineText {#text} at (0,0) size 0x0
-            RenderSVGContainer {g} at (516,378) size 21x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(110.00,0.00)}]
-              RenderSVGText {text} at (10,2) size 13x23 contains 1 chunk(s)
-                RenderSVGInlineText {#text} at (0,0) size 13x23
-                  chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
-                RenderSVGInlineText {#text} at (0,0) size 0x0
-            RenderSVGContainer {a} at (700,378) size 21x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(220.00,0.00)}]
-              RenderSVGText {text} at (10,2) size 13x23 contains 1 chunk(s)
-                RenderSVGInlineText {#text} at (0,0) size 13x23
-                  chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
-                RenderSVGInlineText {#text} at (0,0) size 0x0
-          RenderSVGContainer {g} at (283,436) size 441x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(0.00,175.00)}]
-            RenderSVGHiddenContainer {defs} at (0,0) size 0x0
-              RenderSVGContainer {g} at (283,436) size 75x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (40,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-            RenderSVGContainer {use} at (283,436) size 75x39
-              RenderSVGContainer {g} at (283,436) size 75x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (40,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-            RenderSVGContainer {use} at (466,436) size 75x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(110.00,0.00)}]
-              RenderSVGContainer {g} at (466,436) size 75x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (40,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-            RenderSVGContainer {use} at (650,436) size 74x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(220.00,0.00)}]
-              RenderSVGContainer {g} at (650,436) size 74x39
-                RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGText {text} at (40,2) size 15x23 contains 1 chunk(s)
-                  RenderSVGInlineText {#text} at (0,0) size 15x23
-                    chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-            RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-              RenderSVGInlineText {#text} at (0,0) size 15x23
-                chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-              RenderSVGInlineText {#text} at (0,0) size 0x0
-              RenderSVGInlineText {#text} at (0,0) size 0x0
-            RenderSVGContainer {g} at (516,436) size 25x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(110.00,0.00)}]
-              RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                RenderSVGInlineText {#text} at (0,0) size 15x23
-                  chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGInlineText {#text} at (0,0) size 0x0
-            RenderSVGContainer {a} at (700,436) size 24x39 [transform={m=((1.00,0.00)(0.00,1.00)) t=(220.00,0.00)}]
-              RenderSVGText {text} at (10,2) size 15x23 contains 1 chunk(s)
-                RenderSVGInlineText {#text} at (0,0) size 15x23
-                  chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
-                RenderSVGInlineText {#text} at (0,0) size 0x0
-    RenderSVGContainer {g} at (16,517) size 381x62
-      RenderSVGText {text} at (10,310) size 229x38 contains 1 chunk(s)
-        RenderSVGInlineText {#text} at (0,0) size 229x37
-          chunk 1 text run 1 at (10.00,340.00) startOffset 0 endOffset 16 width 228.03: "$Revision: 1.8 $"
-    RenderSVGRect {rect} at (0,0) size 800x600 [stroke={[type=SOLID] [color=#000000]}] [x=1.00] [y=1.00] [width=478.00] [height=358.00]
+layer at (41,12) size 402x273
+  RenderSVGContainer {g} at (67,20) size 670x455
+layer at (225,12) size 31x23
+  RenderSVGText {text} at (184,0) size 31x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 30x23
+      chunk 1 (middle anchor) text run 1 at (225.15,30.00) startOffset 0 endOffset 4 width 29.69: "text"
+layer at (-39,-19) size 402x225 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (67,101) size 670x374
+layer at (-59,3) size 65x191 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (67,154) size 108x319
+layer at (-49,3) size 55x16 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (10,0) size 55x16 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 54x16
+      chunk 1 (end anchor) text run 1 at (-48.65,15.00) startOffset 0 endOffset 9 width 53.65: "transform"
+layer at (-58,38) size 64x16 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (1,35) size 64x16 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 63x16
+      chunk 1 (end anchor) text run 1 at (-57.83,50.00) startOffset 0 endOffset 11 width 62.83: "text-anchor"
+layer at (-43,73) size 49x16 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (16,70) size 49x16 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 49x16
+      chunk 1 (end anchor) text run 1 at (-43.28,85.00) startOffset 0 endOffset 9 width 48.28: "font-size"
+layer at (-58,108) size 64x16 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (1,105) size 64x16 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 63x16
+      chunk 1 (end anchor) text run 1 at (-57.85,120.00) startOffset 0 endOffset 11 width 62.85: "font-family"
+layer at (-48,143) size 54x16 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (11,140) size 54x16 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 53x16
+      chunk 1 (end anchor) text run 1 at (-47.89,155.00) startOffset 0 endOffset 10 width 52.89: "font-style"
+layer at (-59,178) size 65x16 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (0,175) size 65x16 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 65x16
+      chunk 1 (end anchor) text run 1 at (-59.38,190.00) startOffset 0 endOffset 11 width 64.38: "font-weight"
+layer at (2,-9) size 260x16 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (286,101) size 433x27
+layer at (2,-9) size 37x16 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (0,0) size 37x16 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 37x16
+      chunk 1 (middle anchor) text run 1 at (1.87,3.00) startOffset 0 endOffset 6 width 36.26: "<text>"
+layer at (124,-9) size 24x16 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (121,0) size 24x16 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 23x16
+      chunk 1 (middle anchor) text run 1 at (123.77,3.00) startOffset 0 endOffset 3 width 22.47: "<g>"
+layer at (239,-9) size 22x16 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (237,0) size 22x16 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x16
+      chunk 1 (middle anchor) text run 1 at (239.15,3.00) startOffset 0 endOffset 3 width 21.69: "<a>"
+layer at (10,2) size 273x199
+  RenderSVGContainer {g} at (283,145) size 454x330
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 265x23
+  RenderSVGContainer {g} at (283,145) size 441x39
+layer at (10,2) size 45x23
+  RenderSVGHiddenContainer {defs} at (0,0) size 0x0
+layer at (10,2) size 45x23
+  RenderSVGContainer {g} at (10,2) size 45x23
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 45x23
+  RenderSVGContainer {use} at (283,145) size 75x39
+layer at (10,2) size 45x23
+  RenderSVGContainer {g} at (283,145) size 75x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 45x23
+  RenderSVGContainer {use} at (466,145) size 75x39
+layer at (10,2) size 45x23
+  RenderSVGContainer {g} at (466,145) size 75x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 45x23
+  RenderSVGContainer {use} at (650,145) size 74x39
+layer at (10,2) size 45x23
+  RenderSVGContainer {g} at (650,145) size 74x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (10,2) size 15x23
+  RenderSVGContainer {g} at (516,145) size 25x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 15x23
+  RenderSVGContainer {a} at (700,145) size 24x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 260x23
+  RenderSVGContainer {g} at (283,203) size 434x39
+layer at (10,2) size 40x23
+  RenderSVGHiddenContainer {defs} at (0,0) size 0x0
+layer at (10,2) size 40x23
+  RenderSVGContainer {g} at (10,2) size 40x23
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (-4,2) size 15x23 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (-15,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 (end anchor) text run 1 at (-4.30,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 40x23
+  RenderSVGContainer {use} at (283,203) size 67x39
+layer at (10,2) size 40x23
+  RenderSVGContainer {g} at (283,203) size 67x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (-4,2) size 15x23 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (-15,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 (end anchor) text run 1 at (-4.30,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 40x23
+  RenderSVGContainer {use} at (466,203) size 68x39
+layer at (10,2) size 40x23
+  RenderSVGContainer {g} at (466,203) size 68x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (-4,2) size 15x23 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (-15,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 (end anchor) text run 1 at (-4.30,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 40x23
+  RenderSVGContainer {use} at (650,203) size 67x39
+layer at (10,2) size 40x23
+  RenderSVGContainer {g} at (650,203) size 67x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (-4,2) size 15x23 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (-15,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 (end anchor) text run 1 at (-4.30,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (-4,2) size 15x23 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (-15,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 (end anchor) text run 1 at (-4.30,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (146,2) size 15x23
+  RenderSVGContainer {g} at (509,203) size 25x39
+layer at (106,2) size 15x23
+  RenderSVGText {text} at (-40,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 (end anchor) text run 1 at (105.70,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (256,2) size 15x23
+  RenderSVGContainer {a} at (692,203) size 25x39
+layer at (216,2) size 15x23
+  RenderSVGText {text} at (-40,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 (end anchor) text run 1 at (215.70,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (10,-7) size 272x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (283,246) size 454x59
+layer at (10,-7) size 52x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGHiddenContainer {defs} at (0,0) size 0x0
+layer at (10,-7) size 52x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (10,-8) size 52x36
+layer at (10,2) size 15x24
+  RenderSVGText {text} at (0,9) size 15x24 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (40,-7) size 22x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (30,0) size 22x35 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+layer at (10,-7) size 52x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {use} at (283,246) size 87x59
+layer at (10,-7) size 52x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (283,246) size 87x59
+layer at (10,2) size 15x24
+  RenderSVGText {text} at (0,9) size 15x24 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (40,-7) size 22x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (30,0) size 22x35 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+layer at (10,-7) size 52x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {use} at (466,246) size 87x59
+layer at (10,-7) size 52x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (466,246) size 87x59
+layer at (10,2) size 15x24
+  RenderSVGText {text} at (0,9) size 15x24 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (40,-7) size 22x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (30,0) size 22x35 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+layer at (10,-7) size 52x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {use} at (650,246) size 87x59
+layer at (10,-7) size 52x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (650,246) size 87x59
+layer at (10,2) size 15x24
+  RenderSVGText {text} at (0,9) size 15x24 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (40,-7) size 22x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (30,0) size 22x35 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+layer at (10,-7) size 22x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (0,0) size 22x35 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (150,-7) size 22x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (516,246) size 37x59
+layer at (120,-7) size 22x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (-30,0) size 22x35 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (120.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (260,-7) size 22x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {a} at (700,246) size 37x59
+layer at (230,-7) size 22x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (-30,0) size 22x35 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (230.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (10,-8) size 272x37 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (283,303) size 454x60
+layer at (10,-8) size 52x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGHiddenContainer {defs} at (0,0) size 0x0
+layer at (10,-8) size 52x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (10,-8) size 52x36
+layer at (10,-8) size 21x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (0,0) size 21x35 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 21x35
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 20.01: "A"
+layer at (40,-7) size 22x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (30,0) size 22x36 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+layer at (10,-8) size 52x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {use} at (283,303) size 87x60
+layer at (10,-8) size 52x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (283,303) size 87x60
+layer at (10,-8) size 21x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (0,0) size 21x35 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 21x35
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 20.01: "A"
+layer at (40,-7) size 22x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (30,0) size 22x36 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+layer at (10,-8) size 52x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {use} at (466,303) size 87x60
+layer at (10,-8) size 52x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (466,303) size 87x60
+layer at (10,-8) size 21x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (0,0) size 21x35 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 21x35
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 20.01: "A"
+layer at (40,-7) size 22x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (30,0) size 22x36 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+layer at (10,-8) size 52x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {use} at (650,303) size 87x60
+layer at (10,-8) size 52x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (650,303) size 87x60
+layer at (10,-8) size 21x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (0,0) size 21x35 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 21x35
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 20.01: "A"
+layer at (40,-7) size 22x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (30,0) size 22x36 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+layer at (10,-7) size 22x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (0,0) size 22x36 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (40,-7) size 22x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {g} at (516,304) size 37x59
+layer at (10,-7) size 22x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (-30,0) size 22x35 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (40,-7) size 22x36 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGContainer {a} at (700,304) size 37x59
+layer at (10,-7) size 22x35 backgroundClip at (0,0) size 480x360 clip at (0,0) size 480x360
+  RenderSVGText {text} at (-30,0) size 22x35 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 22x35
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 21.67: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (10,2) size 263x23
+  RenderSVGContainer {g} at (283,378) size 438x39
+layer at (10,2) size 43x23
+  RenderSVGHiddenContainer {defs} at (0,0) size 0x0
+layer at (10,2) size 43x23
+  RenderSVGContainer {g} at (10,2) size 43x23
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (40,2) size 13x23
+  RenderSVGText {text} at (30,0) size 13x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 13x23
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
+layer at (10,2) size 43x23
+  RenderSVGContainer {use} at (283,378) size 71x39
+layer at (10,2) size 43x23
+  RenderSVGContainer {g} at (283,378) size 71x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (40,2) size 13x23
+  RenderSVGText {text} at (30,0) size 13x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 13x23
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
+layer at (10,2) size 43x23
+  RenderSVGContainer {use} at (466,378) size 71x39
+layer at (10,2) size 43x23
+  RenderSVGContainer {g} at (466,378) size 71x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (40,2) size 13x23
+  RenderSVGText {text} at (30,0) size 13x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 13x23
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
+layer at (10,2) size 43x23
+  RenderSVGContainer {use} at (650,378) size 71x39
+layer at (10,2) size 43x23
+  RenderSVGContainer {g} at (650,378) size 71x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (40,2) size 13x23
+  RenderSVGText {text} at (30,0) size 13x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 13x23
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
+layer at (10,2) size 13x23
+  RenderSVGText {text} at (0,0) size 13x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 13x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (40,2) size 13x23
+  RenderSVGContainer {g} at (516,378) size 21x39
+layer at (10,2) size 13x23
+  RenderSVGText {text} at (-30,0) size 13x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 13x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (40,2) size 13x23
+  RenderSVGContainer {a} at (700,378) size 21x39
+layer at (10,2) size 13x23
+  RenderSVGText {text} at (-30,0) size 13x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 13x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 12.09: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (10,2) size 265x23
+  RenderSVGContainer {g} at (283,436) size 441x39
+layer at (10,2) size 45x23
+  RenderSVGHiddenContainer {defs} at (0,0) size 0x0
+layer at (10,2) size 45x23
+  RenderSVGContainer {g} at (10,2) size 45x23
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (40,2) size 15x23
+  RenderSVGText {text} at (30,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 45x23
+  RenderSVGContainer {use} at (283,436) size 75x39
+layer at (10,2) size 45x23
+  RenderSVGContainer {g} at (283,436) size 75x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (40,2) size 15x23
+  RenderSVGText {text} at (30,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 45x23
+  RenderSVGContainer {use} at (466,436) size 75x39
+layer at (10,2) size 45x23
+  RenderSVGContainer {g} at (466,436) size 75x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (40,2) size 15x23
+  RenderSVGText {text} at (30,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 45x23
+  RenderSVGContainer {use} at (650,436) size 74x39
+layer at (10,2) size 45x23
+  RenderSVGContainer {g} at (650,436) size 74x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (40,2) size 15x23
+  RenderSVGText {text} at (30,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (40.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (0,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (40,2) size 15x23
+  RenderSVGContainer {g} at (516,436) size 25x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (-30,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (40,2) size 15x23
+  RenderSVGContainer {a} at (700,436) size 24x39
+layer at (10,2) size 15x23
+  RenderSVGText {text} at (-30,0) size 15x23 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 15x23
+      chunk 1 text run 1 at (10.00,20.00) startOffset 0 endOffset 1 width 14.30: "A"
+    RenderSVGInlineText {#text} at (0,0) size 0x0
+layer at (10,311) size 229x38
+  RenderSVGContainer {g} at (16,517) size 381x62
+layer at (10,311) size 229x37
+  RenderSVGText {text} at (0,0) size 229x37 contains 1 chunk(s)
+    RenderSVGInlineText {#text} at (0,0) size 229x37
+      chunk 1 text run 1 at (10.00,340.00) startOffset 0 endOffset 16 width 228.03: "$Revision: 1.8 $"
+layer at (1,1) size 478x358
+  RenderSVGRect {rect} at (0,0) size 800x600 [stroke={[type=SOLID] [color=#000000]}] [x=1.00] [y=1.00] [width=478.00] [height=358.00]

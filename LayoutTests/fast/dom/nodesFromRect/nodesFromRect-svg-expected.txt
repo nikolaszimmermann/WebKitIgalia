@@ -13,6 +13,8 @@ PASS All correct nodes found for rect
 PASS All correct nodes found for rect
 PASS All correct nodes found for rect
 PASS All correct nodes found for rect
+PASS All correct nodes found for rect
+PASS All correct nodes found for rect
 Check area hits overlapping SVG element
 PASS All correct nodes found for rect
 PASS All correct nodes found for rect
