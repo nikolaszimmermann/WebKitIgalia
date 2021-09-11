@@ -80,6 +80,9 @@ class RenderMarquee;
 class RenderReplica;
 class RenderScrollbarPart;
 class RenderStyle;
+class RenderSVGHiddenContainer;
+class RenderSVGResourceClipper;
+class RenderSVGResourceContainer;
 class RenderView;
 class Scrollbar;
 class TransformationMatrix;
@@ -156,7 +159,7 @@ public:
     friend class RenderLayerScrollableArea;
 
     explicit RenderLayer(RenderLayerModelObject&);
-    ~RenderLayer();
+    virtual ~RenderLayer();
 
     WEBCORE_EXPORT RenderLayerScrollableArea* scrollableArea() const;
     WEBCORE_EXPORT RenderLayerScrollableArea* ensureLayerScrollableArea();
@@ -435,7 +438,7 @@ public:
 
     bool cannotBlitToWindow() const;
 
-    bool isTransparent() const { return renderer().isTransparent() || renderer().hasMask(); }
+    bool isTransparent() const;
 
     bool hasReflection() const { return renderer().hasReflection(); }
     bool isReflection() const { return renderer().isReplica(); }
@@ -483,6 +486,7 @@ public:
     void setInResizeMode(bool b) { m_inResizeMode = b; }
 
     bool isRenderViewLayer() const { return m_isRenderViewLayer; }
+    bool usesSVGTransformationRules() const { return m_usesSVGTransformationRules; }
     bool isForcedStackingContext() const { return m_forcedStackingContext; }
     bool isOpportunisticStackingContext() const { return m_isOpportunisticStackingContext; }
 
@@ -501,6 +505,8 @@ public:
     enum PaginationInclusionMode { ExcludeCompositedPaginatedLayers, IncludeCompositedPaginatedLayers };
     RenderLayer* enclosingPaginationLayer(PaginationInclusionMode mode) const
     {
+        if (renderer().isSVGLayerAwareRenderer() && !renderer().isSVGRoot())
+            return nullptr;
         if (mode == ExcludeCompositedPaginatedLayers && hasCompositedLayerInEnclosingPaginationChain())
             return nullptr;
         return m_enclosingPaginationLayer.get();
@@ -639,7 +645,7 @@ public:
     void paint(GraphicsContext&, const LayoutRect& damageRect, const LayoutSize& subpixelOffset = LayoutSize(), OptionSet<PaintBehavior> = PaintBehavior::Normal,
         RenderObject* subtreePaintRoot = nullptr, OptionSet<PaintLayerFlag> = { }, SecurityOriginPaintPolicy = SecurityOriginPaintPolicy::AnyOrigin, EventRegionContext* = nullptr);
     bool hitTest(const HitTestRequest&, HitTestResult&);
-    bool hitTest(const HitTestRequest&, const HitTestLocation&, HitTestResult&);
+    bool hitTest(const HitTestRequest&, const HitTestLocation&, HitTestResult&, RenderLayer* rootPaintingLayer = nullptr);
 
     struct ClipRectsContext {
         ClipRectsContext(const RenderLayer* inRootLayer, ClipRectsType inClipRectsType, OverlayScrollbarSizeRelevancy inOverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize, ShouldRespectOverflowClip inRespectOverflowClip = RespectOverflowClip)
@@ -724,6 +730,10 @@ public:
     void setStaticBlockPosition(LayoutUnit position) { m_staticBlockPosition = position; }
 
     bool hasTransform() const { return renderer().hasTransform(); }
+
+    FloatRect transformReferenceBox() const;
+    FloatRect transformReferenceBox(const CSSBoxType&, const LayoutSize& offsetFromRoot, const LayoutRect& rootRelativeBounds) const;
+
     // Note that this transform has the transform-origin baked in.
     TransformationMatrix* transform() const { return m_transform.get(); }
     // currentTransform computes a transform which takes accelerated animations into account. The
@@ -735,7 +745,7 @@ public:
     // Get the perspective transform, which is applied to transformed sublayers.
     // Returns true if the layer has a -webkit-perspective.
     // Note that this transform has the perspective-origin baked in.
-    TransformationMatrix perspectiveTransform(const LayoutRect& layerRect) const;
+    TransformationMatrix perspectiveTransform(const FloatRect& layerRect) const;
     FloatPoint perspectiveOrigin() const;
     bool preserves3D() const { return renderer().style().transformStyle3D() == TransformStyle3D::Preserve3D; }
     bool has3DTransform() const { return m_transform && !m_transform->isAffine(); }
@@ -823,6 +833,11 @@ public:
     void establishesTopLayerWillChange();
     void establishesTopLayerDidChange();
 
+    RenderSVGResourceClipper* svgClipperFromStyle() const;
+    RenderSVGHiddenContainer* enclosingSVGHiddenContainer() const;
+    RenderSVGResourceContainer* enclosingSVGResourceContainer() const;
+    RenderLayer* enclosingSVGRootLayer() const;
+
     enum ViewportConstrainedNotCompositedReason {
         NoNotCompositedReason,
         NotCompositedForBoundsOutOfView,
@@ -857,6 +872,23 @@ public:
 
     String debugDescription() const;
 
+    virtual LayoutPoint rendererLocation() const = 0;
+    virtual RoundedRect rendererRoundedBorderBoxRect() const = 0;
+    virtual LayoutRect rendererBorderBoxRect() const = 0;
+    virtual LayoutRect rendererBorderBoxRectInFragment(RenderFragmentContainer*, RenderBox::RenderBoxFragmentInfoFlags = RenderBox::CacheRenderBoxFragmentInfo) const = 0;
+    virtual LayoutRect rendererOverflowClipRect(const LayoutPoint&, RenderFragmentContainer* = nullptr, OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize, PaintPhase = PaintPhase::BlockBackground) const = 0;
+    virtual LayoutRect rendererOverflowClipRectForChildLayers(const LayoutPoint&, RenderFragmentContainer*, OverlayScrollbarSizeRelevancy) const = 0;
+    virtual LayoutRect rendererClipRect(const LayoutPoint&, RenderFragmentContainer* = nullptr) const = 0;
+
+    void paintSVGResourceLayer(GraphicsContext&, const LayoutRect& paintDirtyRect, const AffineTransform& contentTransform);
+    bool isPaintingSVGResourceLayer() const { return m_isPaintingSVGResourceLayer; }
+    static RenderLayer* currentSVGResourceFilterLayer();
+
+    bool setIsOpportunisticStackingContext(bool);
+    void dirtyAncestorChainVisibleDescendantStatus();
+
+    RenderLayer* enclosingTransformedAncestor() const;
+
 private:
 
     void setNextSibling(RenderLayer* next) { m_next = next; }
@@ -875,7 +907,6 @@ private:
     // Return true if changed.
     bool setIsNormalFlowOnly(bool);
 
-    bool setIsOpportunisticStackingContext(bool);
     bool setIsCSSStackingContext(bool);
     
     void isStackingContextChanged();
@@ -889,6 +920,8 @@ private:
     void clearZOrderLists();
 
     void updateNormalFlowList();
+
+    void computeCurrentLayerTransform(TransformationMatrix&, const RenderStyle&, OptionSet<RenderStyle::TransformOperationOption>) const;
 
     struct LayerPaintingInfo {
         LayerPaintingInfo(RenderLayer* inRootLayer, const LayoutRect& inDirtyRect, OptionSet<PaintBehavior> inPaintBehavior, const LayoutSize& inSubpixelOffset, RenderObject* inSubtreePaintRoot = nullptr, OverlapTestRequestMap* inOverlapTestRequests = nullptr, bool inRequireSecurityOriginAccessForWidgets = false)
@@ -911,6 +944,11 @@ private:
         bool clipToDirtyRect { true };
         EventRegionContext* eventRegionContext { nullptr };
     };
+
+    LayoutPoint paintOffsetForRenderer(const LayerFragment& fragment, const LayerPaintingInfo& paintingInfo) const
+    {
+        return toLayoutPoint(fragment.layerBounds.location() - rendererLocation() + paintingInfo.subpixelOffset);
+    }
 
     // Compute, cache and return clip rects computed with the given layer as the root.
     Ref<ClipRects> updateClipRects(const ClipRectsContext&);
@@ -970,7 +1008,7 @@ private:
 
     Path computeClipPath(const LayoutSize& offsetFromRoot, LayoutRect& rootRelativeBounds, WindRule&) const;
 
-    bool setupClipPath(GraphicsContext&, const LayerPaintingInfo&, const LayoutSize& offsetFromRoot);
+    bool setupClipPath(GraphicsContext&, const LayerPaintingInfo&, const LayoutSize& offsetFromRoot, bool& paintSVGClippingMask);
 
     void ensureLayerFilters();
     void clearLayerFilters();
@@ -980,7 +1018,7 @@ private:
 
     RenderLayerFilters* filtersForPainting(GraphicsContext&, OptionSet<PaintLayerFlag>) const;
     GraphicsContext* setupFilters(GraphicsContext& destinationContext, LayerPaintingInfo&, OptionSet<PaintLayerFlag>, const LayoutSize& offsetFromRoot);
-    void applyFilters(GraphicsContext& originalContext, const LayerPaintingInfo&, OptionSet<PaintBehavior>, const LayerFragments&);
+    void applyFilters(GraphicsContext& originalContext, const LayerPaintingInfo&, OptionSet<PaintBehavior>, const LayerFragments&, const LayoutSize& offsetFromRoot);
 
     void paintLayer(GraphicsContext&, const LayerPaintingInfo&, OptionSet<PaintLayerFlag>);
     void paintLayerWithEffects(GraphicsContext&, const LayerPaintingInfo&, OptionSet<PaintLayerFlag>);
@@ -1003,6 +1041,7 @@ private:
     void paintTransformedLayerIntoFragments(GraphicsContext&, const LayerPaintingInfo&, OptionSet<PaintLayerFlag>);
     void collectEventRegionForFragments(const LayerFragments&, GraphicsContext&, const LayerPaintingInfo&, OptionSet<PaintBehavior>);
 
+    const RenderLayer* ancestorLayerCurrentlyPaintingSVGResource() const;
     RenderLayer* transparentPaintingAncestor();
     void beginTransparencyLayers(GraphicsContext&, const LayerPaintingInfo&, const LayoutRect& dirtyRect);
 
@@ -1033,7 +1072,6 @@ private:
 
     bool allowsCurrentScroll() const;
 
-    void dirtyAncestorChainVisibleDescendantStatus();
     void setAncestorChainHasVisibleDescendant();
 
     bool has3DTransformedDescendant() const { return m_has3DTransformedDescendant; }
@@ -1062,8 +1100,6 @@ private:
 
     Ref<ClipRects> parentClipRects(const ClipRectsContext&) const;
     ClipRect backgroundClipRect(const ClipRectsContext&) const;
-
-    RenderLayer* enclosingTransformedAncestor() const;
 
     LayoutRect getRectToExpose(const LayoutRect& visibleRect, const LayoutRect& exposeRect, bool insideFixed, const ScrollAlignment& alignX, const ScrollAlignment& alignY) const;
 
@@ -1094,6 +1130,7 @@ private:
 
     const bool m_isRenderViewLayer : 1;
     const bool m_forcedStackingContext : 1;
+    const bool m_usesSVGTransformationRules : 1;
 
     bool m_isNormalFlowOnly : 1;
     bool m_isCSSStackingContext : 1;
@@ -1138,6 +1175,7 @@ private:
     bool m_has3DTransformedAncestor : 1;
 
     bool m_insideSVGForeignObject : 1;
+    bool m_isPaintingSVGResourceLayer : 1;
 
     unsigned m_indirectCompositingReason : 4; // IndirectCompositingReason
     unsigned m_viewportConstrainedNotCompositedReason : 2; // ViewportConstrainedNotCompositedReason
@@ -1202,6 +1240,12 @@ private:
 
     // Pointer to the enclosing RenderLayer that caused us to be paginated. It is 0 if we are not paginated.
     WeakPtr<RenderLayer> m_enclosingPaginationLayer;
+
+    // Pointer to the enclosing RenderSVGHiddenContainer, if present.
+    WeakPtr<RenderSVGHiddenContainer> m_enclosingSVGHiddenContainer;
+
+    // Pointer to the enclosing RenderSVGResourceContainer, if present.
+    WeakPtr<RenderSVGResourceContainer> m_enclosingSVGResourceContainer;
 
     IntRect m_blockSelectionGapsBounds;
 

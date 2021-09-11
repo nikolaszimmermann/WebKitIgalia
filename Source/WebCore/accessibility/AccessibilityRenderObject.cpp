@@ -2632,7 +2632,7 @@ AXCoreObject* AccessibilityRenderObject::accessibilityHitTest(const IntPoint& po
     if (!m_renderer || !m_renderer->hasLayer())
         return nullptr;
 
-    RenderLayer* layer = downcast<RenderBox>(*m_renderer).layer();
+    RenderLayer* layer = downcast<RenderLayerModelObject>(*m_renderer).layer();
      
     constexpr OptionSet<HitTestRequest::Type> hitType { HitTestRequest::Type::ReadOnly, HitTestRequest::Type::Active, HitTestRequest::Type::AccessibilityHitTest };
     HitTestResult hitTestResult { point };

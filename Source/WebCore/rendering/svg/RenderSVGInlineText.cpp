@@ -157,12 +157,12 @@ VisiblePosition RenderSVGInlineText::positionForPoint(const LayoutPoint& point, 
 
     float baseline = m_scaledFont.fontMetrics().floatAscent();
 
-    RenderBlock* containingBlock = this->containingBlock();
-    ASSERT(containingBlock);
+    auto* textAncestor = RenderSVGText::locateRenderSVGTextAncestor(*this);
+    ASSERT(textAncestor);
 
     // Map local point to absolute point, as the character origins stored in the text fragments use absolute coordinates.
     FloatPoint absolutePoint(point);
-    absolutePoint.moveBy(containingBlock->location());
+    absolutePoint.moveBy(textAncestor->objectBoundingBox().location());
 
     float closestDistance = std::numeric_limits<float>::max();
     float closestDistancePosition = 0;

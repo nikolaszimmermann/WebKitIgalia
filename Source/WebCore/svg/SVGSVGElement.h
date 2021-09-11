@@ -93,7 +93,6 @@ public:
     SMILTimeContainer& timeContainer() { return m_timeContainer.get(); }
 
     void setCurrentTranslate(const FloatPoint&); // Used to pan.
-    void updateCurrentTranslate();
 
     bool hasIntrinsicWidth() const;
     bool hasIntrinsicHeight() const;
@@ -137,7 +136,6 @@ private:
     void resumeFromDocumentSuspension() override;
     void didMoveToNewDocument(Document& oldDocument, Document& newDocument) override;
 
-    AffineTransform localCoordinateSpaceTransform(SVGLocatable::CTMScope) const override;
     RefPtr<Frame> frameForCurrentScale() const;
     Ref<NodeList> collectIntersectionOrEnclosureList(SVGRect&, SVGElement*, bool (*checkFunction)(SVGElement&, SVGRect&));
 

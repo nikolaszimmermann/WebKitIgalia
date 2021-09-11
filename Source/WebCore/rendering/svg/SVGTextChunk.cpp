@@ -55,7 +55,7 @@ SVGTextChunk::SVGTextChunk(const Vector<SVGInlineTextBox*>& lineLayoutBoxes, uns
     }
 
     if (auto* textContentElement = SVGTextContentElement::elementFromRenderer(box->renderer().parent())) {
-        SVGLengthContext lengthContext(textContentElement);
+        const auto& lengthContext = textContentElement->lengthContext();
         m_desiredTextLength = textContentElement->specifiedTextLength().value(lengthContext);
 
         switch (textContentElement->lengthAdjust()) {

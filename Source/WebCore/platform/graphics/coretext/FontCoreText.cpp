@@ -143,6 +143,15 @@ bool fontHasEitherTable(CTFontRef ctFont, unsigned tableTag1, unsigned tableTag2
 #endif
 }
 
+template<typename RealType>
+constexpr RealType narrowPrecision(bool enableNarrowToIntrinsicPrecision, RealType quantity)
+{
+    static_assert(std::is_floating_point<RealType>::value, "narrowPrecision() can only be used with floating point types");
+    if (!enableNarrowToIntrinsicPrecision)
+        return quantity;
+    return LayoutUnit(quantity).toFloat();
+}
+
 void Font::platformInit()
 {
 #if PLATFORM(IOS_FAMILY)
@@ -158,12 +167,28 @@ void Font::platformInit()
         return initGDIFont();
 #endif
 
+    auto familyName = adoptCF(CTFontCopyFamilyName(m_platformData.font()));
+
+    // Disable antialiasing when rendering with Ahem because many tests require this.
+    bool enableNarrowToIntrinsicPrecision = false;
+    if (isAhemFont(familyName.get())) {
+        m_allowsAntialiasing = false;
+
+        // Narrow to the intrinsic precision of the ascent / descent / ... values stored in the 'HHEA' / 'OS/2' tables.
+        // The data type of the 'ascender' entry in the 'HHEA' table is 'FWord' (== 16-bit signed integer that describes
+        // a quantity in 'FUnits', the smallest measurable distance in em space). The 'sTypoAscender' in the 'OS/2'
+        // table is of the type 'int16' -- in both cases we'll deal with 16-bit precision. CoreText still returns an
+        // unmasked CGFloat, consisting of unexpected rounding artefacts e.g. for the Ahem font.
+        enableNarrowToIntrinsicPrecision = true;
+    }
+
     unsigned unitsPerEm = CTFontGetUnitsPerEm(m_platformData.font());
     float pointSize = m_platformData.size();
-    CGFloat capHeight = pointSize ? CTFontGetCapHeight(m_platformData.font()) : 0;
-    CGFloat lineGap = pointSize ? CTFontGetLeading(m_platformData.font()) : 0;
-    CGFloat ascent = pointSize ? CTFontGetAscent(m_platformData.font()) : 0;
-    CGFloat descent = pointSize ? CTFontGetDescent(m_platformData.font()) : 0;
+
+    CGFloat capHeight = pointSize ? narrowPrecision<CGFloat>(enableNarrowToIntrinsicPrecision, CTFontGetCapHeight(m_platformData.font())) : 0;
+    CGFloat lineGap = pointSize ? narrowPrecision<CGFloat>(enableNarrowToIntrinsicPrecision, CTFontGetLeading(m_platformData.font())) : 0;
+    CGFloat ascent = pointSize ? narrowPrecision<CGFloat>(enableNarrowToIntrinsicPrecision, CTFontGetAscent(m_platformData.font())) : 0;
+    CGFloat descent = pointSize ? narrowPrecision<CGFloat>(enableNarrowToIntrinsicPrecision, CTFontGetDescent(m_platformData.font())) : 0;
 
     // The Open Font Format describes the OS/2 USE_TYPO_METRICS flag as follows:
     // "If set, it is strongly recommended to use OS/2.sTypoAscender - OS/2.sTypoDescender+ OS/2.sTypoLineGap as a value for default line spacing for this font."
@@ -176,12 +201,6 @@ void Font::platformInit()
             lineGap = scaleEmToUnits(typoLineGap, unitsPerEm) * pointSize;
         }
     }
-
-    auto familyName = adoptCF(CTFontCopyFamilyName(m_platformData.font()));
-
-    // Disable antialiasing when rendering with Ahem because many tests require this.
-    if (isAhemFont(familyName.get()))
-        m_allowsAntialiasing = false;
 
 #if PLATFORM(MAC)
     // We need to adjust Times, Helvetica, and Courier to closely match the
@@ -228,7 +247,7 @@ void Font::platformInit()
             if (xGlyph)
                 xHeight = -CGRectGetMinY(platformBoundsForGlyph(xGlyph));
             else
-                xHeight = CTFontGetXHeight(m_platformData.font());
+                xHeight = narrowPrecision<CGFloat>(enableNarrowToIntrinsicPrecision, CTFontGetXHeight(m_platformData.font()));
         } else
             xHeight = verticalRightOrientationFont().fontMetrics().xHeight();
     }
@@ -240,8 +259,8 @@ void Font::platformInit()
     m_fontMetrics.setLineGap(lineGap);
     m_fontMetrics.setXHeight(xHeight);
     m_fontMetrics.setLineSpacing(lineSpacing);
-    m_fontMetrics.setUnderlinePosition(-CTFontGetUnderlinePosition(m_platformData.font()));
-    m_fontMetrics.setUnderlineThickness(CTFontGetUnderlineThickness(m_platformData.font()));
+    m_fontMetrics.setUnderlinePosition(-narrowPrecision<CGFloat>(enableNarrowToIntrinsicPrecision, CTFontGetUnderlinePosition(m_platformData.font())));
+    m_fontMetrics.setUnderlineThickness(narrowPrecision<CGFloat>(enableNarrowToIntrinsicPrecision, CTFontGetUnderlineThickness(m_platformData.font())));
 }
 
 void Font::platformCharWidthInit()

@@ -58,12 +58,12 @@ public:
     void updateReferenceFilterClients(const FilterOperations&);
     void removeReferenceFilterClients();
 
-    void buildFilter(RenderElement&, float scaleFactor, RenderingMode);
+    void buildFilter(RenderLayerModelObject&, float scaleFactor, RenderingMode);
 
     // Per render
-    LayoutRect repaintRect() const { return m_repaintRect; }
+    FloatRect repaintRect() const { return m_repaintRect; }
 
-    GraphicsContext* beginFilterEffect(GraphicsContext& destinationContext, const LayoutRect& filterBoxRect, const LayoutRect& dirtyRect, const LayoutRect& layerRepaintRect);
+    GraphicsContext* beginFilterEffect(GraphicsContext& destinationContext, const FloatRect& filterBoxRect, const FloatRect& filterTargetRect, const FloatRect& dirtyRect, const FloatRect& layerRepaintRect);
     void applyFilterEffect(GraphicsContext& destinationContext);
 
 private:
@@ -79,8 +79,8 @@ private:
     LayoutRect m_dirtySourceRect;
     
     // Data used per paint
-    LayoutPoint m_paintOffset;
-    LayoutRect m_repaintRect;
+    FloatPoint m_paintOffset;
+    FloatRect m_repaintRect;
 };
 
 } // namespace WebCore

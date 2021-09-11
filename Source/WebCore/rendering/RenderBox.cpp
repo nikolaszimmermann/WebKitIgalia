@@ -69,12 +69,15 @@
 #include "RenderLayoutState.h"
 #include "RenderMultiColumnFlow.h"
 #include "RenderSVGResourceClipper.h"
+#include "RenderSVGRoot.h"
 #include "RenderTableCell.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "RuntimeApplicationChecks.h"
 #include "SVGClipPathElement.h"
 #include "SVGElementTypeHelpers.h"
+#include "SVGRenderSupport.h"
+#include "SVGSVGElement.h"
 #include "ScrollAnimator.h"
 #include "ScrollbarTheme.h"
 #include "Settings.h"
@@ -959,6 +962,9 @@ bool RenderBox::isScrollableOrRubberbandableBox() const
 
 bool RenderBox::requiresLayerWithScrollableArea() const
 {
+    if (isSVGRoot() || isRenderSVGModelObject() || isSVGInline() || isSVGText())
+        return false;
+
     // FIXME: This is wrong; these boxes' layers should not need ScrollableAreas via RenderLayer.
     if (isRenderView() || isDocumentElementRenderer())
         return true;
@@ -1400,7 +1406,7 @@ bool RenderBox::hitTestClipPath(const HitTestLocation& hitTestLocation, const La
         if (!is<SVGClipPathElement>(*element))
             break;
         auto& clipper = downcast<RenderSVGResourceClipper>(*element->renderer());
-        if (!clipper.hitTestClipContent(FloatRect(borderBoxRect()), FloatPoint { hitTestLocationInLocalCoordinates }))
+        if (!clipper.hitTestClipContent(FloatRect(borderBoxRect()), hitTestLocationInLocalCoordinates))
             return false;
         break;
     }
@@ -1778,6 +1784,21 @@ void RenderBox::paintClippingMask(PaintInfo& paintInfo, const LayoutPoint& paint
 {
     if (!paintInfo.shouldPaintWithinRoot(*this) || style().visibility() != Visibility::Visible || paintInfo.phase != PaintPhase::ClippingMask || paintInfo.context().paintingDisabled())
         return;
+
+    if (style().clipPath() && style().clipPath()->type() == ClipPathOperation::Reference) {
+        const auto& referenceClipPathOperation = downcast<ReferenceClipPathOperation>(*style().clipPath());
+        if (auto* svgClipper = getRenderSVGResourceById<RenderSVGResourceClipper>(document(), referenceClipPathOperation.fragment())) {
+            LayoutSize offsetFromRoot;
+            LayoutRect rootRelativeBounds;
+            if (hasLayer()) {
+                offsetFromRoot = layer()->offsetFromAncestor(layer()->root());
+                rootRelativeBounds = layer()->calculateLayerBounds(layer()->root(), offsetFromRoot, { RenderLayer::UseLocalClipRectIfPossible });
+            }
+
+            SVGRenderSupport::paintSVGClippingMask(*this, paintInfo, svgClipper, rootRelativeBounds);
+            return;
+        }
+    }
 
     LayoutRect paintRect = LayoutRect(paintOffset, size());
     paintInfo.context().fillRect(snappedIntRect(paintRect), Color::black);
@@ -2504,19 +2525,37 @@ std::optional<LayoutRect> RenderBox::computeVisibleRectInContainer(const LayoutR
         }
     }
 
-    LayoutPoint topLeft = adjustedRect.location();
-    topLeft.move(locationOffset);
+    if (is<RenderSVGRoot>(this) && context.options.contains(RenderObject::VisibleRectContextOption::TranslateToSVGRendererOrigin))
+        context.options.remove(RenderObject::VisibleRectContextOption::TranslateToSVGRendererOrigin);
 
     // We are now in our parent container's coordinate space. Apply our transform to obtain a bounding box
     // in the parent's coordinate space that encloses us.
     auto position = styleToUse.position();
     if (hasLayer() && layer()->transform()) {
         context.hasPositionFixedDescendant = position == PositionType::Fixed;
-        adjustedRect = LayoutRect(encloseRectToDevicePixels(layer()->transform()->mapRect(adjustedRect), document().deviceScaleFactor()));
-        topLeft = adjustedRect.location();
-        topLeft.move(locationOffset);
+        if (is<RenderSVGRoot>(this)) {
+            auto transform = *layer()->transform();
+            transform.multiply(downcast<RenderSVGRoot>(*this).viewBoxTransform());
+            adjustedRect = transform.mapRect(adjustedRect);
+        } else
+            adjustedRect = LayoutRect(encloseRectToDevicePixels(layer()->transform()->mapRect(adjustedRect), document().deviceScaleFactor()));
     } else if (position == PositionType::Fixed)
         context.hasPositionFixedDescendant = true;
+
+    // Apply initial viewport clip
+    if (is<RenderSVGRoot>(this)) {
+        if (downcast<RenderSVGRoot>(*this).shouldApplyViewportClip()) {
+            auto viewportBoundaries = borderBoxRect();
+            if (context.options.contains(VisibleRectContextOption::UseEdgeInclusiveIntersection)) {
+                if (!adjustedRect.edgeInclusiveIntersect(viewportBoundaries))
+                    return std::nullopt;
+            } else
+                adjustedRect.intersect(viewportBoundaries);
+        }
+    }
+
+    LayoutPoint topLeft = adjustedRect.location();
+    topLeft.move(locationOffset);
 
     if (position == PositionType::Absolute && localContainer->isInFlowPositioned() && is<RenderInline>(*localContainer))
         topLeft += downcast<RenderInline>(*localContainer).offsetForInFlowPositionedInline(this);
@@ -2531,7 +2570,7 @@ std::optional<LayoutRect> RenderBox::computeVisibleRectInContainer(const LayoutR
     // FIXME: We ignore the lightweight clipping rect that controls use, since if |o| is in mid-layout,
     // its controlClipRect will be wrong. For overflow clip we use the values cached by the layer.
     adjustedRect.setLocation(topLeft);
-    if (localContainer->hasNonVisibleOverflow()) {
+    if (localContainer->hasNonVisibleOverflow() && is<RenderBox>(*localContainer)) {
         RenderBox& containerBox = downcast<RenderBox>(*localContainer);
         bool isEmpty = !containerBox.applyCachedClipAndScrollPosition(adjustedRect, container, context);
         if (isEmpty) {
@@ -5120,8 +5159,16 @@ LayoutRect RenderBox::layoutOverflowRectForPropagation(const RenderStyle* parent
         // It ensures that the overflow rect tracks the paint geometry and not the inflow layout position.
         flipForWritingMode(rect);
         
-        if (hasTransform && hasLayer())
+        if (hasTransform && hasLayer()) {
+            if (is<RenderSVGRoot>(this)) {
+                auto& svgSVGElement = downcast<RenderSVGRoot>(*this).svgSVGElement();
+                auto zoom = style().effectiveZoom();
+                if (zoom != 1)
+                    rect.scale(svgSVGElement.hasIntrinsicWidth() ? 1 : zoom, svgSVGElement.hasIntrinsicHeight() ? 1 : zoom);
+            }
+
             rect = layer()->currentTransform().mapRect(rect);
+        }
 
         if (isInFlowPositioned())
             rect.move(offsetForInFlowPosition());

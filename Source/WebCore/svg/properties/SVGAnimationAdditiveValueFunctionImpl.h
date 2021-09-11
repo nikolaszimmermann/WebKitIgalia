@@ -181,7 +181,7 @@ public:
 
     void animate(SVGElement& targetElement, float progress, unsigned repeatCount, SVGLengthValue& animated)
     {
-        SVGLengthContext lengthContext(&targetElement);
+        const auto& lengthContext = lengthContextFromElement(&targetElement);
         SVGLengthType lengthType = progress < 0.5 ? m_from.lengthType() : m_to.lengthType();
 
         float from = (m_animationMode == AnimationMode::To ? animated : m_from).value(lengthContext);
@@ -195,7 +195,7 @@ public:
 
     std::optional<float> calculateDistance(SVGElement& targetElement, const String& from, const String& to) const override
     {
-        SVGLengthContext lengthContext(&targetElement);
+        const auto& lengthContext = lengthContextFromElement(&targetElement);
         auto fromLength = SVGLengthValue(m_lengthMode, from);
         auto toLength = SVGLengthValue(m_lengthMode, to);
         return fabsf(toLength.value(lengthContext) - fromLength.value(lengthContext));
@@ -204,7 +204,7 @@ public:
 private:
     void addFromAndToValues(SVGElement& targetElement) override
     {
-        SVGLengthContext lengthContext(&targetElement);
+        const auto& lengthContext = lengthContextFromElement(&targetElement);
         m_to.setValue(lengthContext, m_to.value(lengthContext) + m_from.value(lengthContext));
     }
 

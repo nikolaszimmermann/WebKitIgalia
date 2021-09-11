@@ -303,7 +303,6 @@ private:
     Ref<GraphicsLayer> createGraphicsLayer(const String&, GraphicsLayer::Type = GraphicsLayer::Type::Normal);
 
     RenderLayerModelObject& renderer() const { return m_owningLayer.renderer(); }
-    RenderBox* renderBox() const { return m_owningLayer.renderBox(); }
     RenderLayerCompositor& compositor() const { return m_owningLayer.compositor(); }
 
     void updateInternalHierarchy();
@@ -312,7 +311,7 @@ private:
     bool updateOverflowControlsLayers(bool needsHorizontalScrollbarLayer, bool needsVerticalScrollbarLayer, bool needsScrollCornerLayer);
     bool updateForegroundLayer(bool needsForegroundLayer);
     bool updateBackgroundLayer(bool needsBackgroundLayer);
-    bool updateMaskingLayer(bool hasMask, bool hasClipPath);
+    bool updateMaskingLayer(bool hasSVGMask, bool hasMask, bool hasClipPath);
 
     bool requiresLayerForScrollbar(Scrollbar*) const;
     bool requiresHorizontalScrollbarLayer() const;
@@ -332,7 +331,7 @@ private:
 
     LayoutSize contentOffsetInCompositingLayer() const;
     // Result is transform origin in device pixels.
-    FloatPoint3D computeTransformOriginForPainting(const LayoutRect& borderBox) const;
+    FloatPoint3D computeTransformOriginForPainting(const FloatRect& referenceBox) const;
 
     LayoutSize offsetRelativeToRendererOriginForDescendantLayers() const;
     

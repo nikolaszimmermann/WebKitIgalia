@@ -24,11 +24,17 @@
 #include "SVGLocatable.h"
 
 #include "RenderElement.h"
+#include "RenderSVGForeignObject.h"
+#include "RenderSVGHiddenContainer.h"
+#include "RenderSVGImage.h"
+#include "RenderSVGRoot.h"
+#include "RenderSVGViewportContainer.h"
 #include "SVGElementTypeHelpers.h"
 #include "SVGGraphicsElement.h"
 #include "SVGImageElement.h"
 #include "SVGMatrix.h"
 #include "SVGNames.h"
+#include "SVGRenderingContext.h"
 
 namespace WebCore {
 
@@ -81,21 +87,38 @@ AffineTransform SVGLocatable::computeCTM(SVGElement* element, CTMScope mode, Sty
     if (styleUpdateStrategy == AllowStyleUpdate)
         element->document().updateLayoutIgnorePendingStylesheets();
 
-    AffineTransform ctm;
+    auto* renderer = element->renderer();
+    if (!renderer)
+        return AffineTransform();
 
     SVGElement* stopAtElement = mode == NearestViewportScope ? nearestViewportElement(element) : nullptr;
-    for (Element* currentElement = element; currentElement; currentElement = currentElement->parentOrShadowHostElement()) {
-        if (!currentElement->isSVGElement())
-            break;
+    RenderLayerModelObject* stopAtRenderer = nullptr;
+    if (stopAtElement) {
+        // Handle all renderers here that isViewportElement() can return.
+        ASSERT(stopAtElement->renderer());
+        if (is<RenderSVGRoot>(*stopAtElement->renderer()))
+            stopAtRenderer = &downcast<RenderSVGRoot>(*stopAtElement->renderer());
+        else if (is<RenderSVGViewportContainer>(*stopAtElement->renderer()))
+            stopAtRenderer = &downcast<RenderSVGViewportContainer>(*stopAtElement->renderer());
+        else if (is<RenderSVGForeignObject>(*stopAtElement->renderer()))
+            stopAtRenderer = &downcast<RenderSVGForeignObject>(*stopAtElement->renderer());
+        else if (is<RenderSVGImage>(*stopAtElement->renderer()))
+            stopAtRenderer = &downcast<RenderSVGImage>(*stopAtElement->renderer());
+        else if (is<RenderSVGHiddenContainer>(*stopAtElement->renderer()))
+            stopAtRenderer = &downcast<RenderSVGHiddenContainer>(*stopAtElement->renderer());
+        else
+            ASSERT_NOT_REACHED();
+    } else if (is<RenderSVGRoot>(*renderer)) {
+        auto& svgRoot = downcast<RenderSVGRoot>(*renderer);
 
-        ctm = downcast<SVGElement>(*currentElement).localCoordinateSpaceTransform(mode).multiply(ctm);
-
-        // For getCTM() computation, stop at the nearest viewport element
-        if (currentElement == stopAtElement)
-            break;
+        // For getCTM() do not exit the SVG subtree.
+        // For getScreenCTM() stop at the initial containing block (stopAtRenderer = nullptr).
+        if (mode == NearestViewportScope)
+            stopAtRenderer = &svgRoot;
     }
 
-    return ctm;
+    bool includeDeviceScaleFactor = mode == SVGLocatable::ScreenScope;
+    return SVGRenderingContext::calculateAbsoluteTransformForRenderer(*renderer, stopAtRenderer, includeDeviceScaleFactor);
 }
 
 ExceptionOr<Ref<SVGMatrix>> SVGLocatable::getTransformToElement(SVGElement* target, StyleUpdateStrategy styleUpdateStrategy)

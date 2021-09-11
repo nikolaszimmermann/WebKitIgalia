@@ -35,15 +35,11 @@ public:
 
     SVGSVGElement& svgSVGElement() const;
 
-    FloatRect viewport() const { return m_viewport; }
+    FloatRect currentViewport() const { return m_viewportDimension; }
+    FloatSize currentViewportSize() const { return m_viewportDimension.size(); }
 
     bool isLayoutSizeChanged() const { return m_isLayoutSizeChanged; }
-    bool didTransformToRootUpdate() override { return m_didTransformToRootUpdate; }
-
-    void determineIfLayoutSizeChanged() override;
-    void setNeedsTransformUpdate() override { m_needsTransformUpdate = true; }
-
-    void paint(PaintInfo&, const LayoutPoint&) override;
+    bool didTransformToRootUpdate() const { return m_didTransformToRootUpdate; }
 
 private:
     void element() const = delete;
@@ -51,21 +47,21 @@ private:
     bool isSVGViewportContainer() const override { return true; }
     const char* renderName() const override { return "RenderSVGViewportContainer"; }
 
-    AffineTransform viewportTransform() const;
-    const AffineTransform& localToParentTransform() const override { return m_localToParentTransform; }
+    void layoutChildren() final;
+    void updateLayerInformation() final;
+    void calculateViewport() final;
+    bool pointIsInsideViewportClip(const FloatPoint& pointInParent) final;
+    LayoutRect overflowClipRect(const LayoutPoint& location, RenderFragmentContainer* = nullptr, OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize, PaintPhase = PaintPhase::BlockBackground) const final;
+    void applyTransform(TransformationMatrix&, const RenderStyle&, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption>) const final;
 
-    void calcViewport() override;
-    bool calculateLocalTransform() override;
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
+    void updateFromStyle() override;
 
-    void applyViewportClip(PaintInfo&) override;
-    bool pointIsInsideViewportClip(const FloatPoint& pointInParent) override;
+    bool m_didTransformToRootUpdate { false };
+    bool m_isLayoutSizeChanged { false };
 
-    bool m_didTransformToRootUpdate : 1;
-    bool m_isLayoutSizeChanged : 1;
-    bool m_needsTransformUpdate : 1;
-
-    FloatRect m_viewport;
-    mutable AffineTransform m_localToParentTransform;
+    FloatRect m_viewportDimension;
+    AffineTransform m_supplementalLocalToParentTransform;
 };
 
 } // namespace WebCore

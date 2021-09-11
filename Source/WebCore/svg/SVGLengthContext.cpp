@@ -33,26 +33,27 @@
 #include "RenderView.h"
 #include "SVGElementTypeHelpers.h"
 #include "SVGSVGElement.h"
+#include "ShadowRoot.h"
 #include <wtf/MathExtras.h>
 
 namespace WebCore {
 
-SVGLengthContext::SVGLengthContext(const SVGElement* context)
-    : m_context(context)
+SVGLengthContext::SVGLengthContext(const SVGElement& context)
+    : m_contextModeAndElement(&context, ResolveAgainstDefaultViewport)
 {
 }
 
-SVGLengthContext::SVGLengthContext(const SVGElement* context, const FloatRect& viewport)
-    : m_context(context)
-    , m_overriddenViewport(viewport)
+SVGLengthContext::SVGLengthContext(const SVGElement& context, const FloatRect& viewport)
+    : m_contextModeAndElement(&context, ResolveAgainstOverridenViewport)
+    , m_viewportSize(viewport.size())
 {
 }
 
-FloatRect SVGLengthContext::resolveRectangle(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const FloatRect& viewport, const SVGLengthValue& x, const SVGLengthValue& y, const SVGLengthValue& width, const SVGLengthValue& height)
+FloatRect SVGLengthContext::resolveRectangle(const SVGElement& context, SVGUnitTypes::SVGUnitType type, const FloatRect& viewport, const SVGLengthValue& x, const SVGLengthValue& y, const SVGLengthValue& width, const SVGLengthValue& height)
 {
     ASSERT(type != SVGUnitTypes::SVG_UNIT_TYPE_UNKNOWN);
     if (type == SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE) {
-        SVGLengthContext lengthContext(context);
+        const auto& lengthContext = context.lengthContext();
         return FloatRect(x.value(lengthContext), y.value(lengthContext), width.value(lengthContext), height.value(lengthContext));
     }
 
@@ -63,11 +64,11 @@ FloatRect SVGLengthContext::resolveRectangle(const SVGElement* context, SVGUnitT
                      height.value(lengthContext));
 }
 
-FloatPoint SVGLengthContext::resolvePoint(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const SVGLengthValue& x, const SVGLengthValue& y)
+FloatPoint SVGLengthContext::resolvePoint(const SVGElement& context, SVGUnitTypes::SVGUnitType type, const SVGLengthValue& x, const SVGLengthValue& y)
 {
     ASSERT(type != SVGUnitTypes::SVG_UNIT_TYPE_UNKNOWN);
     if (type == SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE) {
-        SVGLengthContext lengthContext(context);
+        const auto& lengthContext = context.lengthContext();
         return FloatPoint(x.value(lengthContext), y.value(lengthContext));
     }
 
@@ -75,11 +76,11 @@ FloatPoint SVGLengthContext::resolvePoint(const SVGElement* context, SVGUnitType
     return FloatPoint(x.valueAsPercentage(), y.valueAsPercentage());
 }
 
-float SVGLengthContext::resolveLength(const SVGElement* context, SVGUnitTypes::SVGUnitType type, const SVGLengthValue& x)
+float SVGLengthContext::resolveLength(const SVGElement& context, SVGUnitTypes::SVGUnitType type, const SVGLengthValue& x)
 {
     ASSERT(type != SVGUnitTypes::SVG_UNIT_TYPE_UNKNOWN);
     if (type == SVGUnitTypes::SVG_UNIT_TYPE_USERSPACEONUSE) {
-        SVGLengthContext lengthContext(context);
+        const auto& lengthContext = context.lengthContext();
         return x.value(lengthContext);
     }
 
@@ -87,7 +88,7 @@ float SVGLengthContext::resolveLength(const SVGElement* context, SVGUnitTypes::S
     return x.valueAsPercentage();
 }
 
-float SVGLengthContext::valueForLength(const Length& length, SVGLengthMode lengthMode)
+float SVGLengthContext::valueForLength(const Length& length, SVGLengthMode lengthMode) const
 {
     if (length.isPercent()) {
         auto result = convertValueFromPercentageToUserUnits(length.value() / 100, lengthMode);
@@ -98,8 +99,7 @@ float SVGLengthContext::valueForLength(const Length& length, SVGLengthMode lengt
     if (length.isAuto() || !length.isSpecified())
         return 0;
 
-    FloatSize viewportSize;
-    determineViewport(viewportSize);
+    auto viewportSize = m_viewportSize.value_or(FloatSize());
 
     switch (lengthMode) {
     case SVGLengthMode::Width:
@@ -109,13 +109,15 @@ float SVGLengthContext::valueForLength(const Length& length, SVGLengthMode lengt
     case SVGLengthMode::Other:
         return floatValueForLength(length, viewportSize.diagonalLength() / sqrtOfTwoFloat);
     };
+
+    ASSERT_NOT_REACHED();
     return 0;
 }
 
 ExceptionOr<float> SVGLengthContext::convertValueToUserUnits(float value, SVGLengthType lengthType, SVGLengthMode lengthMode) const
 {
     // If the SVGLengthContext carries a custom viewport, force resolving against it.
-    if (!m_overriddenViewport.isEmpty()) {
+    if (m_contextModeAndElement.type() == ResolveAgainstOverridenViewport) {
         // 100% = 100.0 instead of 1.0 for historical reasons, this could eventually be changed
         if (lengthType == SVGLengthType::Percentage)
             value /= 100;
@@ -184,9 +186,10 @@ ExceptionOr<float> SVGLengthContext::convertValueFromUserUnits(float value, SVGL
 
 ExceptionOr<float> SVGLengthContext::convertValueFromUserUnitsToPercentage(float value, SVGLengthMode lengthMode) const
 {
-    FloatSize viewportSize;
-    if (!determineViewport(viewportSize))
+    if (!m_viewportSize)
         return Exception { NotSupportedError };
+
+    auto viewportSize = m_viewportSize.value();
 
     switch (lengthMode) {
     case SVGLengthMode::Width:
@@ -203,9 +206,10 @@ ExceptionOr<float> SVGLengthContext::convertValueFromUserUnitsToPercentage(float
 
 ExceptionOr<float> SVGLengthContext::convertValueFromPercentageToUserUnits(float value, SVGLengthMode lengthMode) const
 {
-    FloatSize viewportSize;
-    if (!determineViewport(viewportSize))
+    if (!m_viewportSize)
         return Exception { NotSupportedError };
+
+    auto viewportSize = m_viewportSize.value();
 
     switch (lengthMode) {
     case SVGLengthMode::Width:
@@ -239,7 +243,7 @@ static inline const RenderStyle* renderStyleForLengthResolving(const SVGElement*
 
 ExceptionOr<float> SVGLengthContext::convertValueFromUserUnitsToEMS(float value) const
 {
-    auto* style = renderStyleForLengthResolving(m_context);
+    auto* style = renderStyleForLengthResolving(contextElement());
     if (!style)
         return Exception { NotSupportedError };
 
@@ -252,7 +256,7 @@ ExceptionOr<float> SVGLengthContext::convertValueFromUserUnitsToEMS(float value)
 
 ExceptionOr<float> SVGLengthContext::convertValueFromEMSToUserUnits(float value) const
 {
-    auto* style = renderStyleForLengthResolving(m_context);
+    auto* style = renderStyleForLengthResolving(contextElement());
     if (!style)
         return Exception { NotSupportedError };
 
@@ -261,7 +265,7 @@ ExceptionOr<float> SVGLengthContext::convertValueFromEMSToUserUnits(float value)
 
 ExceptionOr<float> SVGLengthContext::convertValueFromUserUnitsToEXS(float value) const
 {
-    auto* style = renderStyleForLengthResolving(m_context);
+    auto* style = renderStyleForLengthResolving(contextElement());
     if (!style)
         return Exception { NotSupportedError };
 
@@ -276,7 +280,7 @@ ExceptionOr<float> SVGLengthContext::convertValueFromUserUnitsToEXS(float value)
 
 ExceptionOr<float> SVGLengthContext::convertValueFromEXSToUserUnits(float value) const
 {
-    auto* style = renderStyleForLengthResolving(m_context);
+    auto* style = renderStyleForLengthResolving(contextElement());
     if (!style)
         return Exception { NotSupportedError };
 
@@ -285,34 +289,52 @@ ExceptionOr<float> SVGLengthContext::convertValueFromEXSToUserUnits(float value)
     return value * std::ceil(style->fontMetrics().xHeight());
 }
 
-bool SVGLengthContext::determineViewport(FloatSize& viewportSize) const
+void SVGLengthContext::updateViewport()
 {
-    if (!m_context)
-        return false;
+    ASSERT(m_contextModeAndElement.type() == ResolveAgainstDefaultViewport);
 
-    // If an overridden viewport is given, it has precedence.
-    if (!m_overriddenViewport.isEmpty()) {
-        viewportSize = m_overriddenViewport.size();
-        return true;
-    }
+    m_viewportSize.reset();
+    if (!contextElement())
+        return;
 
     // Root <svg> element lengths are resolved against the top level viewport.
-    if (m_context->isOutermostSVGSVGElement()) {
-        viewportSize = downcast<SVGSVGElement>(*m_context).currentViewportSize();
-        return true;
+    if (contextElement()->isOutermostSVGSVGElement()) {
+        m_viewportSize = downcast<SVGSVGElement>(*contextElement()).currentViewportSize();
+        return;
     }
 
-    // Take size from nearest viewport element.
-    RefPtr viewportElement = m_context->viewportElement();
-    if (!is<SVGSVGElement>(viewportElement))
-        return false;
+    auto* ancestor = contextElement()->parentOrShadowHostNode();
+    while (ancestor) {
+        if (is<SVGSVGElement>(ancestor)) {
+            const auto& svgSVGElement = downcast<SVGSVGElement>(*ancestor);
 
-    const SVGSVGElement& svg = downcast<SVGSVGElement>(*viewportElement);
-    viewportSize = svg.currentViewBoxRect().size();
-    if (viewportSize.isEmpty())
-        viewportSize = svg.currentViewportSize();
+            m_viewportSize = svgSVGElement.currentViewBoxRect().size();
+            if (m_viewportSize->isEmpty()) {
+                m_viewportSize = svgSVGElement.currentViewportSize();
+                if (svgSVGElement.isOutermostSVGSVGElement()) {
+                    const auto& style = *renderStyleForLengthResolving(&svgSVGElement);
+                    auto zoom = style.effectiveZoom();
+                    if (zoom != 1)
+                        m_viewportSize->scale(1.0 / zoom);
+                }
+            }
 
-    return true;
+            return;
+        }
+
+        ancestor = ancestor->parentOrShadowHostNode();
+    }
+}
+
+const SVGLengthContext& lengthContextFromElement(const SVGElement* contextElement)
+{
+    return contextElement ? contextElement->lengthContext() : emptyLengthContext();
+}
+
+const SVGLengthContext& emptyLengthContext()
+{
+    static NeverDestroyed<SVGLengthContext> emptyContext;
+    return emptyContext;
 }
 
 }

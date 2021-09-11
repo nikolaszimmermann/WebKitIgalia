@@ -59,7 +59,7 @@ void RenderSVGRect::updateShapeFromElement()
     clearPath();
     m_usePathFallback = false;
 
-    SVGLengthContext lengthContext(&rectElement());
+    const auto& lengthContext = rectElement().lengthContext();
     FloatSize boundingBoxSize(lengthContext.valueForLength(style().width(), SVGLengthMode::Width), lengthContext.valueForLength(style().height(), SVGLengthMode::Height));
 
     // Spec: "A negative value is illegal. A value of zero disables rendering of the element."

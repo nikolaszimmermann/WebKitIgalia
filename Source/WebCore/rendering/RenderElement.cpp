@@ -577,16 +577,6 @@ void RenderElement::didAttachChild(RenderObject& child, RenderObject*)
 {
     if (is<RenderText>(child))
         downcast<RenderText>(child).styleDidChange(StyleDifference::Equal, nullptr);
-    // SVG creates renderers for <g display="none">, as SVG requires children of hidden
-    // <g>s to have renderers - at least that's how our implementation works. Consider:
-    // <g display="none"><foreignObject><body style="position: relative">FOO...
-    // - requiresLayer() would return true for the <body>, creating a new RenderLayer
-    // - when the document is painted, both layers are painted. The <body> layer doesn't
-    //   know that it's inside a "hidden SVG subtree", and thus paints, even if it shouldn't.
-    // To avoid the problem alltogether, detect early if we're inside a hidden SVG subtree
-    // and stop creating layers at all for these cases - they're not used anyways.
-    if (child.hasLayer() && !layerCreationAllowedForSubtree())
-        downcast<RenderLayerModelObject>(child).layer()->removeOnlyThisLayer(RenderLayer::LayerChangeTiming::RenderTreeConstruction);
 }
 
 RenderObject* RenderElement::attachRendererInternal(RenderPtr<RenderObject> child, RenderObject* beforeChild)
@@ -754,18 +744,6 @@ RenderLayer* RenderElement::findNextLayer(RenderLayer* parentLayer, RenderObject
         return parent()->findNextLayer(parentLayer, this, true);
 
     return nullptr;
-}
-
-bool RenderElement::layerCreationAllowedForSubtree() const
-{
-    RenderElement* parentRenderer = parent();
-    while (parentRenderer) {
-        if (parentRenderer->isSVGHiddenContainer())
-            return false;
-        parentRenderer = parentRenderer->parent();
-    }
-    
-    return true;
 }
 
 void RenderElement::propagateStyleToAnonymousChildren(StylePropagationType propagationType)

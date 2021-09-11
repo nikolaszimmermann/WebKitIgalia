@@ -24,7 +24,9 @@
 #include "RenderSVGViewportContainer.h"
 
 #include "GraphicsContext.h"
+#include "RenderSVGRoot.h"
 #include "RenderView.h"
+#include "SVGContainerLayout.h"
 #include "SVGElementTypeHelpers.h"
 #include "SVGSVGElement.h"
 #include <wtf/IsoMallocInlines.h>
@@ -35,9 +37,6 @@ WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSVGViewportContainer);
 
 RenderSVGViewportContainer::RenderSVGViewportContainer(SVGSVGElement& element, RenderStyle&& style)
     : RenderSVGContainer(element, WTFMove(style))
-    , m_didTransformToRootUpdate(false)
-    , m_isLayoutSizeChanged(false)
-    , m_needsTransformUpdate(true)
 {
 }
 
@@ -46,46 +45,79 @@ SVGSVGElement& RenderSVGViewportContainer::svgSVGElement() const
     return downcast<SVGSVGElement>(RenderSVGContainer::element());
 }
 
-void RenderSVGViewportContainer::determineIfLayoutSizeChanged()
+LayoutRect RenderSVGViewportContainer::overflowClipRect(const LayoutPoint& location, RenderFragmentContainer*, OverlayScrollbarSizeRelevancy, PaintPhase) const
 {
-    m_isLayoutSizeChanged = svgSVGElement().hasRelativeLengths() && selfNeedsLayout();
+    auto viewportRect = m_viewportDimension;
+    if (!m_supplementalLocalToParentTransform.isIdentity())
+        viewportRect = m_supplementalLocalToParentTransform.inverse().value_or(AffineTransform()).mapRect(viewportRect);
+
+    auto clipRect = enclosingLayoutRect(viewportRect);
+    clipRect.moveBy(location);
+    return clipRect;
 }
 
-void RenderSVGViewportContainer::applyViewportClip(PaintInfo& paintInfo)
+void RenderSVGViewportContainer::updateFromStyle()
 {
+    RenderSVGContainer::updateFromStyle();
+    setHasSVGTransform();
+
     if (SVGRenderSupport::isOverflowHidden(*this))
-        paintInfo.context().clip(m_viewport);
+        setHasNonVisibleOverflow();
 }
 
-void RenderSVGViewportContainer::calcViewport()
+void RenderSVGViewportContainer::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
-    SVGSVGElement& element = svgSVGElement();
-    SVGLengthContext lengthContext(&element);
-    FloatRect newViewport(element.x().value(lengthContext), element.y().value(lengthContext), element.width().value(lengthContext), element.height().value(lengthContext));
+    RenderSVGContainer::styleDidChange(diff, oldStyle);
 
-    if (m_viewport == newViewport)
+    if (!hasLayer())
         return;
 
-    m_viewport = newViewport;
-
-    setNeedsBoundariesUpdate();
-    setNeedsTransformUpdate();
+    // SVG2 only requires a CSS stacking context if the inner <svg> element has overflow == hidden,
+    // in order to enforce the viewBox for child layers, we do need an internal stacking context nevertheless.
+    if (!SVGRenderSupport::isOverflowHidden(*this))
+        layer()->setIsOpportunisticStackingContext(true);
 }
 
-bool RenderSVGViewportContainer::calculateLocalTransform() 
+void RenderSVGViewportContainer::updateLayerInformation()
 {
-    m_didTransformToRootUpdate = m_needsTransformUpdate || SVGRenderSupport::transformToRootChanged(parent());
-    if (!m_needsTransformUpdate)
-        return false;
-    
-    m_localToParentTransform = AffineTransform::translation(m_viewport.x(), m_viewport.y()) * viewportTransform();
-    m_needsTransformUpdate = false;
-    return true;
+    if (SVGRenderSupport::isRenderingDisabledDueToEmptySVGViewBox(*this))
+        layer()->dirtyAncestorChainVisibleDescendantStatus();
 }
 
-AffineTransform RenderSVGViewportContainer::viewportTransform() const
+void RenderSVGViewportContainer::layoutChildren()
 {
-    return svgSVGElement().viewBoxToViewTransform(m_viewport.width(), m_viewport.height());
+    RenderSVGContainer::layoutChildren();
+    m_didTransformToRootUpdate = false;
+}
+
+void RenderSVGViewportContainer::calculateViewport()
+{
+    RenderSVGContainer::calculateViewport();
+
+    SVGSVGElement& useSVGSVGElement = svgSVGElement();
+    auto previousViewportDimension = m_viewportDimension;
+
+    const auto& lengthContext = useSVGSVGElement.lengthContext();
+    auto x = useSVGSVGElement.x().value(lengthContext);
+    auto y = useSVGSVGElement.y().value(lengthContext);
+    auto width = useSVGSVGElement.width().value(lengthContext);
+    auto height = useSVGSVGElement.height().value(lengthContext);
+    m_viewportDimension = { x, y, width, height };
+    m_isLayoutSizeChanged = useSVGSVGElement.hasRelativeLengths();
+
+    AffineTransform newTransform;
+    newTransform.translate(x, y);
+    if (!useSVGSVGElement.currentViewBoxRect().isEmpty())
+        newTransform.multiply(useSVGSVGElement.viewBoxToViewTransform(m_viewportDimension.width(), m_viewportDimension.height()));
+
+    if (newTransform != m_supplementalLocalToParentTransform) {
+        m_supplementalLocalToParentTransform = newTransform;
+        m_didTransformToRootUpdate = true;
+    } else if (previousViewportDimension != m_viewportDimension)
+        m_didTransformToRootUpdate = true;
+
+    if (!m_didTransformToRootUpdate)
+        m_didTransformToRootUpdate = SVGContainerLayout::transformToRootChanged(parent());
 }
 
 bool RenderSVGViewportContainer::pointIsInsideViewportClip(const FloatPoint& pointInParent)
@@ -94,16 +126,12 @@ bool RenderSVGViewportContainer::pointIsInsideViewportClip(const FloatPoint& poi
     if (!SVGRenderSupport::isOverflowHidden(*this))
         return true;
     
-    return m_viewport.contains(pointInParent);
+    return m_viewportDimension.contains(pointInParent);
 }
 
-void RenderSVGViewportContainer::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
+void RenderSVGViewportContainer::applyTransform(TransformationMatrix& transform, const RenderStyle& style, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption> options) const
 {
-    // An empty viewBox disables rendering.
-    if (svgSVGElement().hasEmptyViewBox())
-        return;
-
-    RenderSVGContainer::paint(paintInfo, paintOffset);
+    SVGRenderSupport::applyTransform(*this, transform, style, boundingBox, m_supplementalLocalToParentTransform.isIdentity() ? std::nullopt : std::make_optional(m_supplementalLocalToParentTransform), std::nullopt, options);
 }
 
 }

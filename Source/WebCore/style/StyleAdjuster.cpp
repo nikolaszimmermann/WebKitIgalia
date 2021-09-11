@@ -357,10 +357,14 @@ void Adjuster::adjust(RenderStyle& style, const RenderStyle* userAgentAppearance
         }
     }
 
-    // Make sure our z-index value is only applied if the object is positioned.
-    if (style.hasAutoSpecifiedZIndex() || (style.position() == PositionType::Static && !m_parentBoxStyle.isDisplayFlexibleOrGridBox()))
-        style.setHasAutoUsedZIndex();
-    else
+    // Make sure our z-index value is only applied if the object is positioned
+    if (style.hasAutoSpecifiedZIndex() || (style.position() == PositionType::Static && !m_parentBoxStyle.isDisplayFlexibleOrGridBox())) {
+        if (m_element && is<SVGElement>(*m_element)) {
+            if (!downcast<SVGElement>(*m_element).isOutermostSVGSVGElement())
+                style.setHasAutoUsedZIndex();
+        } else
+            style.setHasAutoUsedZIndex();
+    } else
         style.setUsedZIndex(style.specifiedZIndex());
 
     // Auto z-index becomes 0 for the root element and transparent objects. This prevents
@@ -371,6 +375,7 @@ void Adjuster::adjust(RenderStyle& style, const RenderStyle* userAgentAppearance
             || style.hasOpacity()
             || style.hasTransformRelatedProperty()
             || style.hasMask()
+            || style.svgStyle().hasMasker()
             || style.clipPath()
             || style.boxReflect()
             || style.hasFilter()
@@ -617,6 +622,40 @@ void Adjuster::adjustSVGElementStyle(RenderStyle& style, const SVGElement& svgEl
     auto isPositioningAllowed = svgElement.hasTagName(SVGNames::svgTag) && svgElement.parentNode() && !svgElement.parentNode()->isSVGElement() && !svgElement.correspondingElement();
     if (!isPositioningAllowed)
         style.setPosition(RenderStyle::initialPosition());
+
+    auto isInnerSVGElement = [&](const SVGElement& svgElement) {
+        return svgElement.hasTagName(SVGNames::svgTag) && svgElement.parentNode() && is<SVGElement>(svgElement.parentNode());
+    };
+
+    // SVG2: A new stacking context must be established at an SVG element for its descendants if:
+    // - it is the root element
+    // - the ‘z-index’ property applies to the element and its computed value is an integer
+    // - the element is an outermost svg element, or a ‘foreignObject’, ‘image’, ‘marker’, ‘mask’, ‘pattern’, ‘symbol’ or ‘use’ element
+    // - the element is an inner ‘svg’ element and the computed value of its ‘overflow’ property is a value other than visible
+    // - the element is subject to explicit clipping:
+    //   - the ‘clip’ property applies to the element and it has a computed value other than auto
+    //   - the ‘clip-path’ property applies to the element and it has a computed value other than none
+    // - the ‘mask’ property applies to the element and it has a computed value other than none
+    // - the ‘filter’ property applies to the element and it has a computed value other than none
+    // - a property defined in another specification is applied and that property is defined to establish a stacking context in SVG
+    //
+    // Most of the rules were already enforced in StyleResolver::adjustRenderStyle() only the SVG specfic cases remain to be handled here.
+    if (style.hasAutoUsedZIndex()) {
+        if (svgElement.isOutermostSVGSVGElement()
+            || svgElement.hasTagName(SVGNames::foreignObjectTag)
+            || svgElement.hasTagName(SVGNames::imageTag)
+            || svgElement.hasTagName(SVGNames::markerTag)
+            || svgElement.hasTagName(SVGNames::maskTag)
+            || svgElement.hasTagName(SVGNames::patternTag)
+            || svgElement.hasTagName(SVGNames::symbolTag)
+            || svgElement.hasTagName(SVGNames::useTag)
+            || (isInnerSVGElement(svgElement) && (style.overflowX() != Overflow::Visible || style.overflowY() != Overflow::Visible))
+            || style.hasClip()
+            || style.clipPath()
+            || style.svgStyle().hasMasker()
+            || style.hasFilter())
+        style.setUsedZIndex(0);
+    }
 
     // RenderSVGRoot handles zooming for the whole SVG subtree, so foreignObject content should
     // not be scaled again.

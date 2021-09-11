@@ -42,6 +42,8 @@ class RenderSVGResourcePattern final : public RenderSVGResourceContainer {
     WTF_MAKE_ISO_ALLOCATED(RenderSVGResourcePattern);
 public:
     RenderSVGResourcePattern(SVGPatternElement&, RenderStyle&&);
+    virtual ~RenderSVGResourcePattern();
+
     SVGPatternElement& patternElement() const;
 
     void removeAllClientsFromCache(bool markForInvalidation = true) override;
@@ -52,6 +54,7 @@ public:
     FloatRect resourceBoundingBox(const RenderObject&) override { return FloatRect(); }
 
     RenderSVGResourceType resourceType() const override { return PatternResourceType; }
+    bool isSVGResourcePattern() const override { return true; }
 
     void collectPatternAttributes(PatternAttributes&) const;
 
@@ -59,6 +62,7 @@ private:
     void element() const = delete;
     const char* renderName() const override { return "RenderSVGResourcePattern"; }
 
+    void updateFromStyle() override;
     bool buildTileImageTransform(RenderElement&, const PatternAttributes&, const SVGPatternElement&, FloatRect& patternBoundaries, AffineTransform& tileImageTransform) const;
 
     RefPtr<ImageBuffer> createTileImage(const PatternAttributes&, const FloatRect& tileBoundaries, const FloatRect& absoluteTileBoundaries, const AffineTransform& tileImageTransform, FloatRect& clampedAbsoluteTileBoundaries, RenderingMode) const;
@@ -72,4 +76,7 @@ private:
 
 } // namespace WebCore
 
-SPECIALIZE_TYPE_TRAITS_RENDER_SVG_RESOURCE(RenderSVGResourcePattern, PatternResourceType)
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::RenderSVGResourcePattern)
+static bool isType(const WebCore::RenderObject& renderer) { return renderer.isSVGResourcePattern(); }
+static bool isType(const WebCore::RenderSVGResource& resource) { return resource.resourceType() == WebCore::PatternResourceType; }
+SPECIALIZE_TYPE_TRAITS_END()

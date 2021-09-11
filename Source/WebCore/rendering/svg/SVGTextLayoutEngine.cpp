@@ -148,7 +148,7 @@ bool SVGTextLayoutEngine::parentDefinesTextLength(RenderObject* parent) const
     RenderObject* currentParent = parent;
     while (currentParent) {
         if (SVGTextContentElement* textContentElement = SVGTextContentElement::elementFromRenderer(currentParent)) {
-            SVGLengthContext lengthContext(textContentElement);
+            const auto& lengthContext = textContentElement->lengthContext();
             if (textContentElement->lengthAdjust() == SVGLengthAdjustSpacing && textContentElement->specifiedTextLength().value(lengthContext) > 0)
                 return true;
         }
@@ -196,7 +196,7 @@ void SVGTextLayoutEngine::beginTextPathLayout(RenderSVGTextPath& textPath, SVGTe
     if (!textContentElement)
         return;
 
-    SVGLengthContext lengthContext(textContentElement);
+    const auto& lengthContext = textContentElement->lengthContext();
     float desiredTextLength = textContentElement->specifiedTextLength().value(lengthContext);
     if (!desiredTextLength)
         return;
@@ -251,16 +251,14 @@ static inline void dumpTextBoxes(Vector<SVGInlineTextBox*>& boxes)
     for (unsigned boxPosition = 0; boxPosition < boxCount; ++boxPosition) {
         SVGInlineTextBox* textBox = boxes.at(boxPosition);
         Vector<SVGTextFragment>& fragments = textBox->textFragments();
-        fprintf(stderr, "-> Box %i: Dumping text fragments for SVGInlineTextBox, textBox=%p, textRenderer=%p\n", boxPosition, textBox, textBox->renderer());
-        fprintf(stderr, "        textBox properties, start=%i, len=%i, box direction=%i\n", textBox->start(), textBox->len(), textBox->direction());
-        fprintf(stderr, "   textRenderer properties, textLength=%i\n", textBox->renderer()->textLength());
-
-        const UChar* characters = textBox->renderer()->characters();
+        fprintf(stderr, "-> Box %i: Dumping text fragments for SVGInlineTextBox, textBox=%p, textRenderer=%p\n", boxPosition, textBox, &textBox->renderer());
+        fprintf(stderr, "        textBox properties, start=%i, len=%i, box direction=%i\n", textBox->start(), textBox->len(), int(textBox->direction()));
+        fprintf(stderr, "   textRenderer properties, textLength=%i\n", textBox->renderer().length());
 
         unsigned fragmentCount = fragments.size();
         for (unsigned i = 0; i < fragmentCount; ++i) {
             SVGTextFragment& fragment = fragments.at(i);
-            String fragmentString(characters + fragment.characterOffset, fragment.length);
+            String fragmentString(textBox->renderer().text().characters8() + fragment.characterOffset, fragment.length);
             fprintf(stderr, "    -> Fragment %i, x=%lf, y=%lf, width=%lf, height=%lf, characterOffset=%i, length=%i, characters='%s'\n"
                           , i, fragment.x, fragment.y, fragment.width, fragment.height, fragment.characterOffset, fragment.length, fragmentString.utf8().data());
         }

@@ -148,6 +148,8 @@ public:
     LayoutRect frameRect() const { return m_frameRect; }
     void setFrameRect(const LayoutRect& rect) { m_frameRect = rect; }
 
+    FloatRect objectBoundingBox() const override { return frameRect(); }
+
     LayoutRect marginBoxRect() const
     {
         auto marginLeft = computedCSSPadding(style().marginLeft());
@@ -183,9 +185,6 @@ public:
     LayoutRect outlineBoundsForRepaint(const RenderLayerModelObject* /*repaintContainer*/, const RenderGeometryMap*) const final;
     void addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = nullptr) override;
     
-    FloatRect repaintRectInLocalCoordinates() const override { return borderBoxRect(); }
-    FloatRect objectBoundingBox() const override { return borderBoxRect(); }
-
     // Note these functions are not equivalent of childrenOfType<RenderBox>
     RenderBox* parentBox() const;
     RenderBox* firstChildBox() const;

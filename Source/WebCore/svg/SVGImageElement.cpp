@@ -119,6 +119,7 @@ void SVGImageElement::svgAttributeChanged(const QualifiedName& attrName)
     }
 
     if (SVGURIReference::isKnownAttribute(attrName)) {
+        m_imageSourceURL = href();
         m_imageLoader.updateFromElementIgnoringPreviousError();
         return;
     }
@@ -138,35 +139,35 @@ bool SVGImageElement::haveLoadedRequiredResources()
 
 void SVGImageElement::didAttachRenderers()
 {
-    if (auto* imageObj = downcast<RenderSVGImage>(renderer())) {
-        if (imageObj->imageResource().cachedImage())
-            return;
+    if (m_imageLoader.hasPendingBeforeLoadEvent())
+        return;
 
-        imageObj->imageResource().setCachedImage(m_imageLoader.image());
-    }
+    auto& renderImage = downcast<RenderSVGImage>(*renderer());
+    RenderImageResource& renderImageResource = renderImage.imageResource();
+    if (renderImageResource.cachedImage())
+        return;
+
+    renderImageResource.setCachedImage(m_imageLoader.image());
 }
 
 Node::InsertedIntoAncestorResult SVGImageElement::insertedIntoAncestor(InsertionType insertionType, ContainerNode& parentOfInsertedTree)
 {
-    SVGGraphicsElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
-    if (!insertionType.connectedToDocument)
-        return InsertedIntoAncestorResult::Done;
-    // Update image loader, as soon as we're living in the tree.
-    // We can only resolve base URIs properly, after that!
-    m_imageLoader.updateFromElement();
-    return InsertedIntoAncestorResult::Done;
-}
+    // Insert needs to complete first, before we start updating the loader. Loader dispatches events which could result
+    // in callbacks back to this node.
+    Node::InsertedIntoAncestorResult insertNotificationRequest = SVGGraphicsElement::insertedIntoAncestor(insertionType, parentOfInsertedTree);
 
-const AtomString& SVGImageElement::imageSourceURL() const
-{
-    return getAttribute(SVGNames::hrefAttr, XLinkNames::hrefAttr);
+    // If we have been inserted from a renderer-less document,
+    // our loader may have not fetched the image, so do it now.
+    if (insertionType.connectedToDocument && !m_imageLoader.image())
+        m_imageLoader.updateFromElement();
+
+    return insertNotificationRequest;
 }
 
 void SVGImageElement::addSubresourceAttributeURLs(ListHashSet<URL>& urls) const
 {
     SVGGraphicsElement::addSubresourceAttributeURLs(urls);
-
-    addSubresourceURL(urls, document().completeURL(href()));
+    addSubresourceURL(urls, document().completeURL(imageSourceURL()));
 }
 
 void SVGImageElement::didMoveToNewDocument(Document& oldDocument, Document& newDocument)

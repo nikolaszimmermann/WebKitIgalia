@@ -85,8 +85,23 @@ RefPtr<FilterEffect> CSSFilter::buildReferenceFilter(RenderElement& renderer, Fi
         return nullptr;
     }
 
+    unsigned count = 0;
+    static const unsigned maxCountChildNodes = 200;
+    for (auto* child = filterElement->firstChild(); child; child = child->nextSibling()) {
+        if (++count > maxCountChildNodes)
+            return nullptr;
+    }
+
     auto builder = makeUnique<SVGFilterBuilder>(&previousEffect);
     m_sourceAlpha = builder->getEffectById(SourceAlpha::effectName());
+
+    m_usesEffectBoundingBoxMode = filterElement->primitiveUnits() == SVGUnitTypes::SVG_UNIT_TYPE_OBJECTBOUNDINGBOX;
+    if (renderer.isSVGLayerAwareRenderer() || is<RenderBox>(renderer))
+        m_targetBoundingBox = renderer.objectBoundingBox();
+    else
+        m_targetBoundingBox = FloatRect();
+    builder->setPrimitiveUnits(filterElement->primitiveUnits());
+    builder->setTargetBoundingBox(m_targetBoundingBox);
 
     RefPtr<FilterEffect> effect;
     Vector<Ref<FilterEffect>> referenceEffects;
@@ -98,14 +113,21 @@ RefPtr<FilterEffect> CSSFilter::buildReferenceFilter(RenderElement& renderer, Fi
             return nullptr;
         }
 
+        auto* effectRenderer = effectElement.renderer();
+        if (effectRenderer)
+            builder->appendEffectToEffectReferences(effect.copyRef(), effectRenderer);
+
         effectElement.setStandardAttributes(effect.get());
-        if (effectElement.renderer()) {
+        effect->setEffectBoundaries(SVGLengthContext::resolveRectangle<SVGFilterPrimitiveStandardAttributes>(effectElement, filterElement->primitiveUnits(), m_targetBoundingBox));
+
+        if (effectRenderer) {
 #if ENABLE(DESTINATION_COLOR_SPACE_LINEAR_SRGB)
-            effect->setOperatingColorSpace(effectElement.renderer()->style().svgStyle().colorInterpolationFilters() == ColorInterpolation::LinearRGB ? DestinationColorSpace::LinearSRGB() : DestinationColorSpace::SRGB());
+            effect->setOperatingColorSpace(effectRenderer->style().svgStyle().colorInterpolationFilters() == ColorInterpolation::LinearRGB ? DestinationColorSpace::LinearSRGB() : DestinationColorSpace::SRGB());
 #else
             effect->setOperatingColorSpace(DestinationColorSpace::SRGB());
 #endif
         }
+
         builder->add(effectElement.result(), effect);
         referenceEffects.append(*effect);
     }
@@ -285,9 +307,10 @@ bool CSSFilter::build(RenderElement& renderer, const FilterOperations& operation
         if (effect) {
             // Unlike SVG Filters and CSSFilterImages, filter functions on the filter
             // property applied here should not clip to their primitive subregions.
-            effect->setClipsToBounds(consumer == FilterConsumer::FilterFunction);
-            effect->setOperatingColorSpace(DestinationColorSpace::SRGB());
-            
+            effect->setClipsToBounds(consumer != FilterConsumer::FilterProperty);
+            if (consumer != FilterConsumer::SVGFilterFunction)
+                effect->setOperatingColorSpace(DestinationColorSpace::SRGB());
+
             if (filterOperation.type() != FilterOperation::REFERENCE) {
                 effect->inputEffects() = { WTFMove(previousEffect) };
                 m_effects.append(*effect);
@@ -304,15 +327,18 @@ bool CSSFilter::build(RenderElement& renderer, const FilterOperations& operation
 
     setMaxEffectRects(m_sourceDrawingRegion);
 #if USE(CORE_IMAGE)
-    if (!m_filterRenderer)
-        m_filterRenderer = FilterEffectRenderer::tryCreate(renderer.settings().coreImageAcceleratedFilterRenderEnabled(), m_effects.last().get());
+    // FIXME: Color spaces are wrong in the context of SVG filters (LinearRGB vs. SRGB?) - breaks svg/W3C-SVG-1.1/filters-comptran-01-b.svg / svg/W3C-SVG-1.1/filters-color-01-b.svg.
+    if (consumer != FilterConsumer::SVGFilterFunction) {
+        if (!m_filterRenderer)
+            m_filterRenderer = FilterEffectRenderer::tryCreate(renderer.settings().coreImageAcceleratedFilterRenderEnabled(), m_effects.last().get());
+    }
 #endif
     return true;
 }
 
 bool CSSFilter::updateBackingStoreRect(const FloatRect& filterRect)
 {
-    if (filterRect.isEmpty() || ImageBuffer::sizeNeedsClamping(filterRect.size()))
+    if (filterRect.isEmpty())
         return false;
 
     if (filterRect == sourceImageRect())
@@ -322,7 +348,7 @@ bool CSSFilter::updateBackingStoreRect(const FloatRect& filterRect)
     return true;
 }
 
-void CSSFilter::allocateBackingStoreIfNeeded(const GraphicsContext& targetContext)
+void CSSFilter::allocateBackingStoreIfNeeded(const GraphicsContext& targetContext, const FloatSize& logicalSize, const DestinationColorSpace& colorSpace)
 {
     // At this point the effect chain has been built, and the
     // source image sizes set. We just need to attach the graphic
@@ -331,14 +357,13 @@ void CSSFilter::allocateBackingStoreIfNeeded(const GraphicsContext& targetContex
     if (m_graphicsBufferAttached)
         return;
 
-    IntSize logicalSize { m_sourceDrawingRegion.size() };
     if (!sourceImage() || sourceImage()->logicalSize() != logicalSize) {
 #if USE(DIRECT2D)
-        setSourceImage(ImageBuffer::create(logicalSize, renderingMode(), &targetContext, filterScale(), DestinationColorSpace::SRGB(), PixelFormat::BGRA8));
+        setSourceImage(ImageBuffer::create(logicalSize, renderingMode(), &targetContext, filterScale(), colorSpace, PixelFormat::BGRA8));
 #else
         UNUSED_PARAM(targetContext);
         RenderingMode mode = m_filterRenderer ? RenderingMode::Accelerated : renderingMode();
-        setSourceImage(ImageBuffer::create(logicalSize, mode, filterScale(), DestinationColorSpace::SRGB(), PixelFormat::BGRA8));
+        setSourceImage(ImageBuffer::create(logicalSize, mode, filterScale(), colorSpace, PixelFormat::BGRA8));
 #endif
     }
     m_graphicsBufferAttached = true;
@@ -346,11 +371,12 @@ void CSSFilter::allocateBackingStoreIfNeeded(const GraphicsContext& targetContex
 
 void CSSFilter::determineFilterPrimitiveSubregion()
 {
+    ASSERT(!m_effects.isEmpty());
     auto& lastEffect = m_effects.last().get();
     lastEffect.determineFilterPrimitiveSubregion();
     FloatRect subRegion = lastEffect.maxEffectRect();
     // At least one FilterEffect has a too big image size, recalculate the effect sizes with new scale factors.
-    FloatSize scale;
+    auto scale = filterResolution();
     if (ImageBuffer::sizeNeedsClamping(subRegion.size(), scale)) {
         setFilterResolution(scale);
         lastEffect.determineFilterPrimitiveSubregion();
@@ -368,6 +394,7 @@ void CSSFilter::clearIntermediateResults()
 
 void CSSFilter::apply()
 {
+    ASSERT(!m_effects.isEmpty());
     auto& effect = m_effects.last().get();
     if (m_filterRenderer) {
         m_filterRenderer->applyEffects(effect);
@@ -377,10 +404,11 @@ void CSSFilter::apply()
         }
     }
     effect.apply();
+    effect.correctFilterResultIfNeeded();
     effect.transformResultColorSpace(DestinationColorSpace::SRGB());
 }
 
-LayoutRect CSSFilter::computeSourceImageRectForDirtyRect(const LayoutRect& filterBoxRect, const LayoutRect& dirtyRect)
+FloatRect CSSFilter::computeSourceImageRectForDirtyRect(const FloatRect& filterBoxRect, const FloatRect& dirtyRect)
 {
     // The result of this function is the area in the "filterBoxRect" that needs to be repainted, so that we fully cover the "dirtyRect".
     auto rectForRepaint = dirtyRect;
@@ -390,20 +418,39 @@ LayoutRect CSSFilter::computeSourceImageRectForDirtyRect(const LayoutRect& filte
     return rectForRepaint;
 }
 
+FloatSize CSSFilter::scaledByFilterResolution(FloatSize size) const
+{
+    if (m_usesEffectBoundingBoxMode)
+        size = size * m_targetBoundingBox.size();
+
+    return Filter::scaledByFilterResolution(size) * m_absoluteFilterRegion.size() / m_filterRegion.size();
+}
+
 ImageBuffer* CSSFilter::output() const
 {
     if (m_filterRenderer && m_filterRenderer->hasResult())
         return m_filterRenderer->output();
-    
+    ASSERT(!m_effects.isEmpty());
     return m_effects.last()->imageBufferResult();
 }
 
 void CSSFilter::setSourceImageRect(const FloatRect& sourceImageRect)
 {
-    m_sourceDrawingRegion = sourceImageRect;
+    if (absoluteTransform().isIdentity())
+        m_sourceDrawingRegion = sourceImageRect;
+    else
+        m_sourceDrawingRegion = absoluteTransform().mapRect(sourceImageRect);
     setMaxEffectRects(sourceImageRect);
-    setFilterRegion(sourceImageRect);
     m_graphicsBufferAttached = false;
+}
+
+void CSSFilter::setFilterRegion(const FloatRect& filterRegion)
+{
+    m_filterRegion = filterRegion;
+    if (absoluteTransform().isIdentity())
+        m_absoluteFilterRegion = m_filterRegion;
+    else
+        m_absoluteFilterRegion = absoluteTransform().mapRect(m_filterRegion);
 }
 
 void CSSFilter::setMaxEffectRects(const FloatRect& effectRect)
@@ -414,10 +461,11 @@ void CSSFilter::setMaxEffectRects(const FloatRect& effectRect)
 
 IntRect CSSFilter::outputRect() const
 {
+    ASSERT(!m_effects.isEmpty());
     auto& lastEffect = m_effects.last().get();
-    
+
     if (lastEffect.hasResult() || (m_filterRenderer && m_filterRenderer->hasResult()))
-        return lastEffect.requestedRegionOfInputPixelBuffer(IntRect { m_filterRegion });
+        return lastEffect.requestedRegionOfInputPixelBuffer(IntRect { m_absoluteFilterRegion });
     
     return { };
 }

@@ -190,8 +190,8 @@ float SVGFontFaceElement::verticalAdvanceY() const
     // Spec: The default vertical advance after rendering a glyph in vertical orientation. If the attribute is
     // not specified, the effect is as if a value equivalent of one em were specified (see units-per-em).                    
     const AtomString& value = m_fontElement->attributeWithoutSynchronization(vert_adv_yAttr);
-       if (value.isEmpty())
-        return 1.0f;
+    if (value.isEmpty())
+        return unitsPerEm();
 
     return value.toFloat();
 }

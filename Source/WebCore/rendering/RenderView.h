@@ -77,6 +77,7 @@ public:
     std::optional<LayoutRect> computeVisibleRectInContainer(const LayoutRect&, const RenderLayerModelObject* container, VisibleRectContext) const override;
     void repaintRootContents();
     void repaintViewRectangle(const LayoutRect&) const;
+    void repaintViewRectangles(const LayoutRect&, const LayoutRect&) const;
     void repaintViewAndCompositedLayers();
 
     void paint(PaintInfo&, const LayoutPoint&) override;

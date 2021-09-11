@@ -27,6 +27,7 @@ namespace WebCore {
 
 class AffineTransform;
 class FloatRect;
+class LayoutRect;
 
 class SVGPreserveAspectRatioValue {
     WTF_MAKE_FAST_ALLOCATED;
@@ -61,6 +62,7 @@ public:
     unsigned short meetOrSlice() const { return m_meetOrSlice; }
 
     void transformRect(FloatRect& destRect, FloatRect& srcRect) const;
+    void transformRect(LayoutRect& destRect, LayoutRect& srcRect) const;
 
     AffineTransform getCTM(float logicalX, float logicalY, float logicalWidth, float logicalHeight, float physicalWidth, float physicalHeight) const;
 

@@ -21,6 +21,8 @@
 #include "RenderSVGHiddenContainer.h"
 
 #include "RenderSVGPath.h"
+#include "SVGLogger.h"
+#include "SVGResourcesCache.h"
 #include <wtf/IsoMallocInlines.h>
 #include <wtf/StackStats.h>
 
@@ -35,15 +37,42 @@ RenderSVGHiddenContainer::RenderSVGHiddenContainer(SVGElement& element, RenderSt
 
 void RenderSVGHiddenContainer::layout()
 {
+#if !defined(NDEBUG)
+    SVGLogger::DebugScope debugScope(
+        [&](TextStream& stream) {
+            stream << renderName() << " " << this << " -> begin layout"
+            << " (selfNeedsLayout=" << selfNeedsLayout()
+            << ", needsLayout=" << needsLayout() << ")";
+        },
+        [&](TextStream& stream) {
+            stream << renderName() << " " << this << " <- end layout";
+        });
+#endif
+
     StackStats::LayoutCheckPoint layoutCheckPoint;
     ASSERT(needsLayout());
-    SVGRenderSupport::layoutChildren(*this, selfNeedsLayout());
-    clearNeedsLayout();    
+
+    calculateViewport();
+    layoutChildren();
+
+    SVGRenderSupport::updateLayerTransform(*this);
+
+    // Invalidate all resources of this client if our layout changed.
+    if (everHadLayout() && needsLayout())
+        SVGResourcesCache::clientLayoutChanged(*this);
+
+    clearNeedsLayout();
 }
 
-void RenderSVGHiddenContainer::paint(PaintInfo&, const LayoutPoint&)
+std::optional<LayoutRect> RenderSVGHiddenContainer::computeVisibleRectInContainer(const LayoutRect& rect, const RenderLayerModelObject*, VisibleRectContext) const
 {
-    // This subtree does not paint.
+    // This subtree does not take up space or paint
+    return rect;
+}
+
+void RenderSVGHiddenContainer::absoluteRects(Vector<IntRect>&, const LayoutPoint&) const
+{
+    // This subtree does not take up space or paint
 }
 
 void RenderSVGHiddenContainer::absoluteQuads(Vector<FloatQuad>&, bool*) const
@@ -51,9 +80,15 @@ void RenderSVGHiddenContainer::absoluteQuads(Vector<FloatQuad>&, bool*) const
     // This subtree does not take up space or paint
 }
 
-bool RenderSVGHiddenContainer::nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint&, HitTestAction)
+bool RenderSVGHiddenContainer::nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation&, const LayoutPoint&, HitTestAction)
 {
+    // This subtree does not take up space or paint
     return false;
+}
+
+void RenderSVGHiddenContainer::addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint&, const RenderLayerModelObject*)
+{
+    // This subtree does not take up space or paint
 }
 
 }

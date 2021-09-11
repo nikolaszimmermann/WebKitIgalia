@@ -33,7 +33,7 @@ public:
     static Ref<SVGImageElement> create(const QualifiedName&, Document&);
 
     bool hasSingleSecurityOrigin() const;
-    const AtomString& imageSourceURL() const final;
+    const AtomString& imageSourceURL() const final { return m_imageSourceURL; }
 
     const SVGLengthValue& x() const { return m_x->currentValue(); }
     const SVGLengthValue& y() const { return m_y->currentValue(); }
@@ -74,6 +74,7 @@ private:
     Ref<SVGAnimatedLength> m_height { SVGAnimatedLength::create(this, SVGLengthMode::Height) };
     Ref<SVGAnimatedPreserveAspectRatio> m_preserveAspectRatio { SVGAnimatedPreserveAspectRatio::create(this) };
     SVGImageLoader m_imageLoader;
+    AtomString m_imageSourceURL;
 };
 
 } // namespace WebCore

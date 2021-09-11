@@ -48,15 +48,26 @@ void SVGInlineFlowBox::paintSelectionBackground(PaintInfo& paintInfo)
     }
 }
 
-void SVGInlineFlowBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, LayoutUnit, LayoutUnit)
+void SVGInlineFlowBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, LayoutUnit lineTop, LayoutUnit lineBottom)
 {
-    ASSERT(paintInfo.phase == PaintPhase::Foreground || paintInfo.phase == PaintPhase::Selection);
-    ASSERT(!paintInfo.context().paintingDisabled());
+    if (paintInfo.context().paintingDisabled())
+        return;
+    if (paintInfo.phase != PaintPhase::Foreground && paintInfo.phase != PaintPhase::Selection && paintInfo.phase != PaintPhase::Outline && paintInfo.phase != PaintPhase::SelfOutline && paintInfo.phase != PaintPhase::ChildOutlines && paintInfo.phase != PaintPhase::TextClip && paintInfo.phase != PaintPhase::Mask && paintInfo.phase != PaintPhase::EventRegion)
+        return;
+    if (paintInfo.phase == PaintPhase::Mask)
+        return;
 
-    SVGRenderingContext renderingContext(renderer(), paintInfo, SVGRenderingContext::SaveGraphicsContext);
-    if (renderingContext.isRenderingPrepared()) {
-        for (auto* child = firstChild(); child; child = child->nextOnLine())
-            child->paint(paintInfo, paintOffset, 0, 0);
+    PaintPhase paintPhase = paintInfo.phase == PaintPhase::ChildOutlines ? PaintPhase::Outline : paintInfo.phase;
+    PaintInfo childInfo(paintInfo);
+    childInfo.phase = paintPhase;
+    childInfo.updateSubtreePaintRootForChildren(&renderer());
+
+    // Paint our children.
+    if (paintPhase != PaintPhase::SelfOutline) {
+        for (auto* curr = firstChild(); curr; curr = curr->nextOnLine()) {
+            if (curr->renderer().isText() || !curr->boxModelObject()->hasSelfPaintingLayer())
+                curr->paint(childInfo, paintOffset, lineTop, lineBottom);
+        }
     }
 }
 

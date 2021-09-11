@@ -202,7 +202,8 @@ static inline bool fullyClipsContents(Node& node)
     if (!is<RenderBox>(*renderer))
         return false;
     auto& box = downcast<RenderBox>(*renderer);
-    if (!box.hasNonVisibleOverflow())
+    // Treat SVG <foreignObject> as it has no overflow clip for the purpose of text iteration.
+    if (!box.hasNonVisibleOverflow() || renderer->isSVGForeignObject())
         return false;
 
     // Quirk to keep copy/paste in the CodeMirror editor version used in Jenkins working.

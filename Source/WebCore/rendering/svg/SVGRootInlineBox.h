@@ -35,7 +35,7 @@ class SVGRootInlineBox final : public LegacyRootInlineBox {
 public:
     explicit SVGRootInlineBox(RenderSVGText&);
 
-    RenderSVGText& renderSVGText();
+    RenderSVGText& renderSVGText() const;
 
     float virtualLogicalHeight() const override { return m_logicalHeight; }
     void setLogicalHeight(float height) { m_logicalHeight = height; }

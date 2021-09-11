@@ -175,8 +175,6 @@ static void writeStyle(TextStream& ts, const RenderElement& renderer)
     const RenderStyle& style = renderer.style();
     const SVGRenderStyle& svgStyle = style.svgStyle();
 
-    if (!renderer.localTransform().isIdentity())
-        writeNameValuePair(ts, "transform", renderer.localTransform());
     writeIfNotDefault(ts, "image rendering", style.imageRendering(), RenderStyle::initialImageRendering());
     writeIfNotDefault(ts, "opacity", style.opacity(), RenderStyle::initialOpacity());
     if (is<RenderSVGShape>(renderer)) {
@@ -188,7 +186,7 @@ static void writeStyle(TextStream& ts, const RenderElement& renderer)
             ts << " [stroke={" << s;
             writeSVGPaintingResource(ts, strokePaintingResource);
 
-            SVGLengthContext lengthContext(&shape.graphicsElement());
+            const auto& lengthContext = shape.graphicsElement().lengthContext();
             double dashOffset = lengthContext.valueForLength(svgStyle.strokeDashOffset());
             double strokeWidth = lengthContext.valueForLength(style.strokeWidth());
             const auto& dashes = svgStyle.strokeDashArray();
@@ -253,7 +251,7 @@ static TextStream& operator<<(TextStream& ts, const RenderSVGShape& shape)
     writePositionAndStyle(ts, shape);
 
     SVGGraphicsElement& svgElement = shape.graphicsElement();
-    SVGLengthContext lengthContext(&svgElement);
+    const auto& lengthContext = svgElement.lengthContext();
 
     if (is<SVGRectElement>(svgElement)) {
         const SVGRectElement& element = downcast<SVGRectElement>(svgElement);
@@ -398,8 +396,11 @@ static void writeChildren(TextStream& ts, const RenderElement& parent, OptionSet
 {
     TextStream::IndentScope indentScope(ts);
 
-    for (const auto& child : childrenOfType<RenderObject>(parent))
+    for (const auto& child : childrenOfType<RenderObject>(parent)) {
+        if (child.hasLayer())
+            continue;
         write(ts, child, behavior);
+    }
 }
 
 static inline void writeCommonGradientProperties(TextStream& ts, SVGSpreadMethodType spreadMethod, const AffineTransform& gradientTransform, SVGUnitTypes::SVGUnitType gradientUnits)
@@ -430,15 +431,6 @@ void writeSVGResourceContainer(TextStream& ts, const RenderSVGResourceContainer&
         writeNameValuePair(ts, "filterUnits", filter.filterUnits());
         writeNameValuePair(ts, "primitiveUnits", filter.primitiveUnits());
         ts << "\n";
-        // Creating a placeholder filter which is passed to the builder.
-        FloatRect dummyRect;
-        auto dummyFilter = SVGFilter::create(AffineTransform(), dummyRect, dummyRect, dummyRect, true);
-        if (auto builder = filter.buildPrimitives(dummyFilter.get())) {
-            TextStream::IndentScope indentScope(ts);
-
-            if (FilterEffect* lastEffect = builder->lastEffect())
-                lastEffect->externalRepresentation(ts);
-        }
     } else if (resource.resourceType() == ClipperResourceType) {
         const auto& clipper = static_cast<const RenderSVGResourceClipper&>(resource);
         writeNameValuePair(ts, "clipPathUnits", clipper.clipPathUnits());
@@ -589,7 +581,8 @@ void writeResources(TextStream& ts, const RenderObject& renderer, OptionSet<Rend
             const FilterOperation& filterOperation = *filterOperations.at(0);
             if (filterOperation.type() == FilterOperation::REFERENCE) {
                 const auto& referenceFilterOperation = downcast<ReferenceFilterOperation>(filterOperation);
-                AtomString id = SVGURIReference::fragmentIdentifierFromIRIString(referenceFilterOperation.url(), renderer.document());
+                String url = referenceFilterOperation.url();
+                AtomString id = SVGURIReference::fragmentIdentifierFromIRIString(url, renderer.document()).toStringWithoutCopying();
                 if (RenderSVGResourceFilter* filter = getRenderSVGResourceById<RenderSVGResourceFilter>(renderer.document(), id)) {
                     ts << indent << " ";
                     writeNameAndQuotedValue(ts, "filter", id);

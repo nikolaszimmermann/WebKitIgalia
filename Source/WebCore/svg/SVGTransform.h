@@ -171,9 +171,9 @@ private:
     void commitPropertyChange(SVGProperty* property) override
     {
         ASSERT_UNUSED(property, property == m_value.matrix().ptr());
+        m_value.matrixDidChange();
         if (owner())
             owner()->commitPropertyChange(this);
-        m_value.matrixDidChange();
     }
 
     String valueAsString() const override

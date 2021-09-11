@@ -23,6 +23,7 @@
 #include "FloatQuad.h"
 #include "RenderBlock.h"
 #include "RenderSVGInlineInlines.h"
+#include "RenderSVGShape.h"
 #include "SVGElementTypeHelpers.h"
 #include "SVGGeometryElement.h"
 #include "SVGInlineTextBox.h"
@@ -62,14 +63,19 @@ Path RenderSVGTextPath::layoutPath() const
     if (!is<SVGGeometryElement>(element))
         return Path();
 
-    Path path = pathFromGraphicsElement(element);
-
     // Spec:  The transform attribute on the referenced 'path' element represents a
     // supplemental transformation relative to the current user coordinate system for
     // the current 'text' element, including any adjustments to the current user coordinate
     // system due to a possible transform attribute on the current 'text' element.
     // http://www.w3.org/TR/SVG/text.html#TextPathElement
-    path.transform(element->animatedLocalTransform());
+    auto& renderer = downcast<RenderSVGShape>(*element->renderer());
+    ASSERT(renderer.hasLayer());
+
+    Path path = pathFromGraphicsElement(element);
+
+    const auto& layerTransform = renderer.layer()->currentTransform(RenderStyle::individualTransformOperations).toAffineTransform();
+    if (!layerTransform.isIdentity())
+        path.transform(layerTransform);
     return path;
 }
 

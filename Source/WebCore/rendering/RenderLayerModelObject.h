@@ -44,6 +44,10 @@ public:
     bool hasSelfPaintingLayer() const;
     RenderLayer* layer() const { return m_layer.get(); }
 
+    // This takes care of both appyling CSS transformations and SVG viewBox transformations + SVG SMIL <animateMotion>.
+    virtual void applyTransform(TransformationMatrix&, const RenderStyle&, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption>) const;
+
+    void svgAnimatedLocalTransformChanged();
     void styleWillChange(StyleDifference, const RenderStyle& newStyle) override;
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
     virtual void updateFromStyle() { }

@@ -281,26 +281,6 @@ static bool isDirectReference(const SVGElement& element)
         || element.hasTagName(textTag);
 }
 
-Path SVGUseElement::toClipPath()
-{
-    auto targetClone = this->targetClone();
-    if (!is<SVGGraphicsElement>(targetClone))
-        return { };
-
-    if (!isDirectReference(*targetClone)) {
-        // Spec: Indirect references are an error (14.3.5)
-        document().accessSVGExtensions().reportError("Not allowed to use indirect reference in <clip-path>"_s);
-        return { };
-    }
-
-    Path path = downcast<SVGGraphicsElement>(*targetClone).toClipPath();
-    SVGLengthContext lengthContext(this);
-    // FIXME: Find a way to do this without manual resolution of x/y here. It's potentially incorrect.
-    path.translate(FloatSize(x().value(lengthContext), y().value(lengthContext)));
-    path.transform(animatedLocalTransform());
-    return path;
-}
-
 RenderElement* SVGUseElement::rendererClipChild() const
 {
     auto targetClone = this->targetClone();

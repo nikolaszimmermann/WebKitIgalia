@@ -34,7 +34,7 @@ public:
     virtual ~RenderSVGResourceContainer();
 
     void layout() override;
-    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) final;
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
     bool isSVGResourceContainer() const final { return true; }
 
@@ -57,7 +57,7 @@ protected:
     };
 
     // Used from the invalidateClient/invalidateClients methods from classes, inheriting from us.
-    virtual bool selfNeedsClientInvalidation() const { return everHadLayout() && selfNeedsLayout(); }
+    bool selfNeedsClientInvalidation() const { return everHadLayout() && selfNeedsLayout(); }
 
     void markAllClientsForInvalidation(InvalidationMode);
     void markAllClientLayersForInvalidation();

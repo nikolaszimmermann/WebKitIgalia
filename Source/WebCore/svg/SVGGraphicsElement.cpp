@@ -24,6 +24,7 @@
 
 #include "RenderSVGPath.h"
 #include "RenderSVGResource.h"
+#include "RenderSVGTransformableContainer.h"
 #include "SVGMatrix.h"
 #include "SVGNames.h"
 #include "SVGPathData.h"
@@ -73,35 +74,7 @@ AffineTransform SVGGraphicsElement::getScreenCTM(StyleUpdateStrategy styleUpdate
 
 AffineTransform SVGGraphicsElement::animatedLocalTransform() const
 {
-    AffineTransform matrix;
-
-    auto* style = renderer() ? &renderer()->style() : nullptr;
-    bool hasSpecifiedTransform = style && style->hasTransform();
-
-    // Honor any of the transform-related CSS properties if set.
-    if (hasSpecifiedTransform || (style && (style->translate() || style->scale() || style->rotate()))) {
-        auto boundingBox = SVGRenderSupport::transformReferenceBox(*renderer(), *this, *style);
-        
-        // Note: objectBoundingBox is an emptyRect for elements like pattern or clipPath.
-        // See the "Object bounding box units" section of http://dev.w3.org/csswg/css3-transforms/
-        TransformationMatrix transform;
-        style->applyTransform(transform, boundingBox);
-
-        // Flatten any 3D transform.
-        matrix = transform.toAffineTransform();
-        // CSS bakes the zoom factor into lengths, including translation components.
-        // In order to align CSS & SVG transforms, we need to invert this operation.
-        float zoom = style->effectiveZoom();
-        if (zoom != 1) {
-            matrix.setE(matrix.e() / zoom);
-            matrix.setF(matrix.f() / zoom);
-        }
-    }
-
-    // If we didn't have the CSS "transform" property set, we must account for the "transform" attribute.
-    if (!hasSpecifiedTransform)
-        matrix *= transform().concatenate();
-
+    auto matrix = transform().concatenate();
     if (m_supplementalTransform)
         return *m_supplementalTransform * matrix;
     return matrix;
@@ -130,8 +103,11 @@ void SVGGraphicsElement::svgAttributeChanged(const QualifiedName& attrName)
     if (attrName == SVGNames::transformAttr) {
         InstanceInvalidationGuard guard(*this);
 
-        if (auto renderer = this->renderer()) {
-            renderer->setNeedsTransformUpdate();
+        if (auto* renderer = this->renderer()) {
+            if (is<RenderSVGTransformableContainer>(renderer))
+                downcast<RenderSVGTransformableContainer>(renderer)->setHadTransformUpdate();
+
+            downcast<RenderLayerModelObject>(renderer)->svgAnimatedLocalTransformChanged();
             RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
         }
 
@@ -165,14 +141,6 @@ FloatRect SVGGraphicsElement::getBBox(StyleUpdateStrategy styleUpdateStrategy)
 RenderPtr<RenderElement> SVGGraphicsElement::createElementRenderer(RenderStyle&& style, const RenderTreePosition&)
 {
     return createRenderer<RenderSVGPath>(*this, WTFMove(style));
-}
-
-Path SVGGraphicsElement::toClipPath()
-{
-    Path path = pathFromGraphicsElement(this);
-    // FIXME: How do we know the element has done a layout?
-    path.transform(animatedLocalTransform());
-    return path;
 }
 
 }

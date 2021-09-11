@@ -25,34 +25,12 @@
 
 #include "ImageBuffer.h"
 #include "RenderSVGResourceContainer.h"
-#include "SVGFilter.h"
 #include "SVGFilterBuilder.h"
 #include "SVGUnitTypes.h"
 #include <wtf/IsoMalloc.h>
 #include <wtf/RefPtr.h>
 
 namespace WebCore {
-
-class SVGFilterElement;
-
-struct FilterData {
-    WTF_MAKE_ISO_ALLOCATED(FilterData);
-    WTF_MAKE_NONCOPYABLE(FilterData);
-public:
-    enum FilterDataState { PaintingSource, Applying, Built, CycleDetected, MarkedForRemoval };
-
-    FilterData() = default;
-
-    RefPtr<SVGFilter> filter;
-    std::unique_ptr<SVGFilterBuilder> builder;
-    RefPtr<ImageBuffer> sourceGraphicBuffer;
-    GraphicsContext* savedContext { nullptr };
-    AffineTransform shearFreeAbsoluteTransform;
-    FloatRect boundaries;
-    FloatRect drawingRegion;
-    FloatSize scale;
-    FilterDataState state { PaintingSource };
-};
 
 class GraphicsContext;
 
@@ -68,11 +46,8 @@ public:
     void removeClientFromCache(RenderElement&, bool markForInvalidation = true) override;
 
     bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, OptionSet<RenderSVGResourceMode>) override;
-    void postApplyResource(RenderElement&, GraphicsContext*&, OptionSet<RenderSVGResourceMode>, const Path*, const RenderSVGShape*) override;
 
     FloatRect resourceBoundingBox(const RenderObject&) override;
-
-    std::unique_ptr<SVGFilterBuilder> buildPrimitives(SVGFilter&) const;
 
     inline SVGUnitTypes::SVGUnitType filterUnits() const;
     inline SVGUnitTypes::SVGUnitType primitiveUnits() const;
@@ -81,17 +56,12 @@ public:
 
     RenderSVGResourceType resourceType() const override { return FilterResourceType; }
 
-    FloatRect drawingRegion(RenderObject*) const;
 private:
     void element() const = delete;
 
     const char* renderName() const override { return "RenderSVGResourceFilter"; }
     bool isSVGResourceFilter() const override { return true; }
-
-    HashMap<RenderObject*, std::unique_ptr<FilterData>> m_rendererFilterDataMap;
 };
-
-WTF::TextStream& operator<<(WTF::TextStream&, FilterData::FilterDataState);
 
 } // namespace WebCore
 

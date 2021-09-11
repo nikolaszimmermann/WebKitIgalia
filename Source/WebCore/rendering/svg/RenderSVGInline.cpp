@@ -62,43 +62,12 @@ FloatRect RenderSVGInline::strokeBoundingBox() const
     return FloatRect();
 }
 
-FloatRect RenderSVGInline::repaintRectInLocalCoordinates() const
+FloatRect RenderSVGInline::repaintBoundingBox() const
 {
     if (auto* textAncestor = RenderSVGText::locateRenderSVGTextAncestor(*this))
-        return textAncestor->repaintRectInLocalCoordinates();
+        return textAncestor->repaintBoundingBox();
 
     return FloatRect();
-}
-
-LayoutRect RenderSVGInline::clippedOverflowRect(const RenderLayerModelObject* repaintContainer, VisibleRectContext) const
-{
-    return SVGRenderSupport::clippedOverflowRectForRepaint(*this, repaintContainer);
-}
-
-std::optional<FloatRect> RenderSVGInline::computeFloatVisibleRectInContainer(const FloatRect& rect, const RenderLayerModelObject* container, VisibleRectContext context) const
-{
-    return SVGRenderSupport::computeFloatVisibleRectInContainer(*this, rect, container, context);
-}
-
-void RenderSVGInline::mapLocalToContainer(const RenderLayerModelObject* ancestorContainer, TransformState& transformState, OptionSet<MapCoordinatesMode>, bool* wasFixed) const
-{
-    SVGRenderSupport::mapLocalToContainer(*this, ancestorContainer, transformState, wasFixed);
-}
-
-const RenderObject* RenderSVGInline::pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
-{
-    return SVGRenderSupport::pushMappingToContainer(*this, ancestorToStopAt, geometryMap);
-}
-
-void RenderSVGInline::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) const
-{
-    auto* textAncestor = RenderSVGText::locateRenderSVGTextAncestor(*this);
-    if (!textAncestor)
-        return;
-
-    FloatRect textBoundingBox = textAncestor->strokeBoundingBox();
-    for (auto* box = firstLineBox(); box; box = box->nextLineBox())
-        quads.append(localToAbsoluteQuad(FloatRect(textBoundingBox.x() + box->x(), textBoundingBox.y() + box->y(), box->logicalWidth(), box->logicalHeight()), UseTransforms, wasFixed));
 }
 
 void RenderSVGInline::willBeDestroyed()
@@ -109,8 +78,6 @@ void RenderSVGInline::willBeDestroyed()
 
 void RenderSVGInline::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
-    if (diff == StyleDifference::Layout)
-        setNeedsBoundariesUpdate();
     RenderInline::styleDidChange(diff, oldStyle);
     SVGResourcesCache::clientStyleChanged(*this, diff, style());
 }

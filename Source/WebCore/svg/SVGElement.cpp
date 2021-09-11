@@ -141,7 +141,7 @@ static NEVER_INLINE MemoryCompactLookupOnlyRobinHoodHashMap<AtomString, CSSPrope
         &word_spacingAttr.get(),
         &writing_modeAttr.get(),
         &xAttr.get(),
-        &yAttr.get(),
+        &yAttr.get()
     };
 
     MemoryCompactLookupOnlyRobinHoodHashMap<AtomString, CSSPropertyID> map;
@@ -951,12 +951,6 @@ void SVGElement::setInstanceUpdatesBlocked(bool value)
 
     if (m_svgRareData)
         m_svgRareData->setInstanceUpdatesBlocked(value);
-}
-
-AffineTransform SVGElement::localCoordinateSpaceTransform(SVGLocatable::CTMScope) const
-{
-    // To be overridden by SVGGraphicsElement (or as special case SVGTextElement and SVGPatternElement)
-    return AffineTransform();
 }
 
 void SVGElement::updateRelativeLengthsInformation(bool hasRelativeLengths, SVGElement& element)

@@ -24,7 +24,7 @@
 
 #include "FloatRect.h"
 #include "RenderReplaced.h"
-#include "SVGRenderSupport.h"
+#include "SVGBoundingBoxComputation.h"
 
 namespace WebCore {
 
@@ -39,6 +39,10 @@ public:
     virtual ~RenderSVGRoot();
 
     SVGSVGElement& svgSVGElement() const;
+    FloatSize currentViewportSize() const;
+
+    const AffineTransform& viewBoxTransform() const { return m_viewBoxTransform; }
+    const AffineTransform& supplementalLocalToParentTransform() const { return m_supplementalLocalToParentTransform; }
 
     bool isEmbeddedThroughSVGImage() const;
     bool isEmbeddedThroughFrameContainingSVGDocument() const;
@@ -46,33 +50,39 @@ public:
     void computeIntrinsicRatioInformation(FloatSize& intrinsicSize, double& intrinsicRatio) const override;
 
     bool isLayoutSizeChanged() const { return m_isLayoutSizeChanged; }
+    bool didTransformToRootUpdate() const { return m_didTransformToRootUpdate; }
     bool isInLayout() const { return m_inLayout; }
-    void setNeedsBoundariesUpdate() override { m_needsBoundariesOrTransformUpdate = true; }
-    bool needsBoundariesUpdate() override { return m_needsBoundariesOrTransformUpdate; }
-    void setNeedsTransformUpdate() override { m_needsBoundariesOrTransformUpdate = true; }
 
     IntSize containerSize() const { return m_containerSize; }
     void setContainerSize(const IntSize& containerSize) { m_containerSize = containerSize; }
 
     bool hasRelativeDimensions() const override;
 
-    // localToBorderBoxTransform maps local SVG viewport coordinates to local CSS box coordinates.  
-    const AffineTransform& localToBorderBoxTransform() const { return m_localToBorderBoxTransform; }
-
     // The flag is cleared at the beginning of each layout() pass. Elements then call this
     // method during layout when they are invalidated by a filter.
     static void addResourceForClientInvalidation(RenderSVGResourceContainer*);
+
+    bool shouldApplyViewportClip() const;
+    void applyTransform(TransformationMatrix&, const RenderStyle&, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption>) const final;
+
+    FloatRect objectBoundingBox() const final { return m_objectBoundingBox; }
+    FloatRect strokeBoundingBox() const final { return m_strokeBoundingBox; }
+    FloatRect repaintBoundingBox() const final { return SVGBoundingBoxComputation::computeRepaintBoundingBox(*this); }
+    LayoutRect visualOverflowRectEquivalent() const { return SVGBoundingBoxComputation::computeVisualOverflowRect(*this); }
 
 private:
     void element() const = delete;
 
     bool isSVGRoot() const override { return true; }
     const char* renderName() const override { return "RenderSVGRoot"; }
+    bool requiresLayer() const override { return true; }
 
     LayoutUnit computeReplacedLogicalWidth(ShouldComputePreferred  = ComputeActual) const override;
     LayoutUnit computeReplacedLogicalHeight(std::optional<LayoutUnit> estimatedUsedWidth = std::nullopt) const override;
     void layout() override;
-    void paintReplaced(PaintInfo&, const LayoutPoint&) override;
+    void paint(PaintInfo&, const LayoutPoint&) override;
+    void paintObject(PaintInfo&, const LayoutPoint&) override;
+    void paintContents(PaintInfo&, const LayoutPoint&);
 
     void willBeDestroyed() override;
 
@@ -80,43 +90,39 @@ private:
     void willBeRemovedFromTree(IsInternalMove) override;
 
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
-
-    const AffineTransform& localToParentTransform() const override;
+    void updateLayerInformation();
+    void updateFromStyle() override;
 
     bool fillContains(const FloatPoint&) const;
     bool strokeContains(const FloatPoint&) const;
-
-    FloatRect objectBoundingBox() const override { return m_objectBoundingBox; }
-    FloatRect strokeBoundingBox() const override { return m_strokeBoundingBox; }
-    FloatRect repaintRectInLocalCoordinates() const override { return m_repaintBoundingBox; }
-
     bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
 
+    void computeTransformationMatrices();
+
+    LayoutRect overflowClipRect(const LayoutPoint& location, RenderFragmentContainer* = nullptr, OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize, PaintPhase = PaintPhase::BlockBackground) const final;
     LayoutRect clippedOverflowRect(const RenderLayerModelObject* repaintContainer, VisibleRectContext) const override;
-    std::optional<FloatRect> computeFloatVisibleRectInContainer(const FloatRect&, const RenderLayerModelObject* container, VisibleRectContext) const override;
 
     void mapLocalToContainer(const RenderLayerModelObject* ancestorContainer, TransformState&, OptionSet<MapCoordinatesMode>, bool* wasFixed) const override;
-    const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const override;
+
+    void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const override;
+    void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const override;
 
     bool canBeSelectionLeaf() const override { return false; }
     bool canHaveChildren() const override { return true; }
 
-    bool shouldApplyViewportClip() const;
-    void updateCachedBoundaries();
-    void buildLocalToBorderBoxTransform();
+    void buildViewportTransform();
+
+    bool m_inLayout { false };
+    bool m_didTransformToRootUpdate { false };
+    bool m_isLayoutSizeChanged { false };
+    bool m_hasBoxDecorations { false };
 
     IntSize m_containerSize;
     FloatRect m_objectBoundingBox;
-    bool m_objectBoundingBoxValid { false };
-    bool m_inLayout { false };
     FloatRect m_strokeBoundingBox;
-    FloatRect m_repaintBoundingBox;
-    mutable AffineTransform m_localToParentTransform;
-    AffineTransform m_localToBorderBoxTransform;
+    AffineTransform m_viewBoxTransform;
+    AffineTransform m_supplementalLocalToParentTransform;
     HashSet<RenderSVGResourceContainer*> m_resourcesNeedingToInvalidateClients;
-    bool m_isLayoutSizeChanged : 1;
-    bool m_needsBoundariesOrTransformUpdate : 1;
-    bool m_hasBoxDecorations : 1;
 };
 
 } // namespace WebCore

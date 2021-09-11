@@ -46,8 +46,7 @@ public:
     SVGElement* nearestViewportElement() const override;
     SVGElement* farthestViewportElement() const override;
 
-    AffineTransform localCoordinateSpaceTransform(SVGLocatable::CTMScope mode) const override { return SVGTransformable::localCoordinateSpaceTransform(mode); }
-    AffineTransform animatedLocalTransform() const override;
+    AffineTransform animatedLocalTransform() const;
     AffineTransform* supplementalTransform() override;
 
     Ref<SVGRect> getBBoxForBindings();
@@ -57,7 +56,6 @@ public:
     void setShouldIsolateBlending(bool isolate) { m_shouldIsolateBlending = isolate; }
 
     // "base class" methods for all the elements which render as paths
-    virtual Path toClipPath();
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
 
     size_t approximateMemoryCost() const override { return sizeof(*this); }

@@ -178,7 +178,7 @@ void CSSToStyleMap::mapFillRepeatY(CSSPropertyID propertyID, FillLayer& layer, c
     layer.setRepeatY(downcast<CSSPrimitiveValue>(value));
 }
 
-static inline bool convertToLengthSize(const CSSPrimitiveValue& primitiveValue, CSSToLengthConversionData conversionData, LengthSize& size)
+static inline bool convertToLengthSize(const CSSPrimitiveValue& primitiveValue, const CSSToLengthConversionData& conversionData, LengthSize& size)
 {
     if (auto* pair = primitiveValue.pairValue()) {
         size.width = pair->first()->convertToLength<AnyConversion>(conversionData);

@@ -19,7 +19,6 @@
 
 #pragma once
 
-#include "RenderSVGResourceMarker.h"
 #include <memory>
 #include <wtf/HashSet.h>
 #include <wtf/Noncopyable.h>

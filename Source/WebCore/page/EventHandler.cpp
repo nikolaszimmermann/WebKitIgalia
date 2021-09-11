@@ -976,10 +976,9 @@ void EventHandler::updateSelectionForMouseDrag(const HitTestResult& hitTestResul
     auto newSelection = oldSelection;
 
     // Special case to limit selection to the containing block for SVG text.
-    // FIXME: Isn't there a better non-SVG-specific way to do this?
-    if (RefPtr selectionBaseNode = newSelection.base().deprecatedNode()) {
-        if (RenderObject* selectionBaseRenderer = selectionBaseNode->renderer()) {
-            if (selectionBaseRenderer->isSVGText()) {
+    if (auto* selectionBaseContainerNode = newSelection.base().deprecatedNode()) {
+        if (auto* selectionBaseRenderer = selectionBaseContainerNode->renderer()) {
+            if (selectionBaseRenderer->isSVGInlineText()) {
                 if (target->renderer()->containingBlock() != selectionBaseRenderer->containingBlock())
                     return;
             }

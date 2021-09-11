@@ -92,7 +92,6 @@
 #include "PseudoClassChangeInvalidation.h"
 #include "Quirks.h"
 #include "RenderFragmentedFlow.h"
-#include "RenderLayer.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
 #include "RenderLayerScrollableArea.h"
@@ -1454,12 +1453,9 @@ IntRect Element::boundsInRootViewSpace()
 
     Vector<FloatQuad> quads;
 
-    if (isSVGElement() && renderer()) {
-        // Get the bounding rectangle from the SVG model.
-        SVGElement& svgElement = downcast<SVGElement>(*this);
-        if (auto localRect = svgElement.getBoundingBox())
-            quads.append(renderer()->localToAbsoluteQuad(*localRect));
-    } else {
+    if (isSVGElement() && renderer())
+        renderer()->absoluteQuads(quads);
+    else {
         // Get the bounding rectangle from the box model.
         if (renderBoxModelObject())
             renderBoxModelObject()->absoluteQuads(quads);
@@ -1637,7 +1633,9 @@ Ref<DOMRectList> Element::getClientRects()
     RenderObject* renderer = this->renderer();
     Vector<FloatQuad> quads;
 
-    if (auto pair = listBoxElementBoundingBox(*this)) {
+    if (isSVGElement() && renderer)
+        renderer->absoluteQuads(quads);
+    else if (auto pair = listBoxElementBoundingBox(*this)) {
         renderer = pair.value().first;
         quads.append(renderer->localToAbsoluteQuad(FloatQuad { pair.value().second }));
     } else if (auto* renderBoxModelObject = this->renderBoxModelObject())
@@ -1658,12 +1656,9 @@ std::optional<std::pair<RenderObject*, FloatRect>> Element::boundingAbsoluteRect
 {
     RenderObject* renderer = this->renderer();
     Vector<FloatQuad> quads;
-    if (isSVGElement() && renderer && !renderer->isSVGRoot()) {
-        // Get the bounding rectangle from the SVG model.
-        SVGElement& svgElement = downcast<SVGElement>(*this);
-        if (auto localRect = svgElement.getBoundingBox())
-            quads.append(renderer->localToAbsoluteQuad(*localRect));
-    } else if (auto pair = listBoxElementBoundingBox(*this)) {
+    if (isSVGElement() && renderer)
+        renderer->absoluteQuads(quads);
+    else if (auto pair = listBoxElementBoundingBox(*this)) {
         renderer = pair.value().first;
         quads.append(renderer->localToAbsoluteQuad(FloatQuad { pair.value().second }));
     } else if (auto* renderBoxModelObject = this->renderBoxModelObject())

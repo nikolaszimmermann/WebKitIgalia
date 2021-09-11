@@ -22,9 +22,9 @@
 
 #include "ClipPathOperation.h"
 #include "FilterOperation.h"
-#include "RenderSVGResourceClipper.h"
-#include "RenderSVGResourceFilter.h"
-#include "RenderSVGResourceMarker.h"
+#include "RenderSVGResourceClipperInlines.h"
+#include "RenderSVGResourceFilterInlines.h"
+#include "RenderSVGResourceMarkerInlines.h"
 #include "RenderSVGResourceMaskerInlines.h"
 #include "RenderSVGRoot.h"
 #include "SVGElementTypeHelpers.h"
@@ -155,7 +155,7 @@ static inline String targetReferenceFromResource(SVGElement& element)
     else
         ASSERT_NOT_REACHED();
 
-    return SVGURIReference::fragmentIdentifierFromIRIString(target, element.document());
+    return SVGURIReference::fragmentIdentifierFromIRIString(target, element.document()).toString();
 }
 
 static inline bool isChainableResource(const SVGElement& element, const SVGElement& linkedResource)
@@ -178,7 +178,7 @@ static inline RenderSVGResourceContainer* paintingResourceFromSVGPaint(Document&
     if (paintType != SVGPaintType::URI && paintType != SVGPaintType::URIRGBColor && paintType != SVGPaintType::URICurrentColor)
         return nullptr;
 
-    id = SVGURIReference::fragmentIdentifierFromIRIString(paintUri, document);
+    id = SVGURIReference::fragmentIdentifierFromIRIString(paintUri, document).toString();
     RenderSVGResourceContainer* container = getRenderSVGResourceContainerById(document, id);
     if (!container) {
         hasPendingResource = true;
@@ -236,7 +236,8 @@ bool SVGResources::buildCachedResources(const RenderElement& renderer, const Ren
                 const FilterOperation& filterOperation = *filterOperations.at(0);
                 if (filterOperation.type() == FilterOperation::REFERENCE) {
                     const auto& referenceFilterOperation = downcast<ReferenceFilterOperation>(filterOperation);
-                    AtomString id = SVGURIReference::fragmentIdentifierFromIRIString(referenceFilterOperation.url(), element.document());
+                    String url = referenceFilterOperation.url();
+                    AtomString id = SVGURIReference::fragmentIdentifierFromIRIString(url, element.document()).toString();
                     if (setFilter(getRenderSVGResourceById<RenderSVGResourceFilter>(document, id)))
                         foundResources = true;
                     else

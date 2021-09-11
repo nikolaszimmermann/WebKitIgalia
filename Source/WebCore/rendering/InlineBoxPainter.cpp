@@ -32,7 +32,9 @@
 #include "RenderBlockFlow.h"
 #include "RenderInline.h"
 #include "RenderLayer.h"
+#include "RenderSVGResourceClipper.h"
 #include "RenderView.h"
+#include "SVGRenderSupport.h"
 
 namespace WebCore {
 
@@ -104,6 +106,10 @@ void InlineBoxPainter::paint()
         return;
     }
 
+    if (m_paintInfo.phase == PaintPhase::ClippingMask) {
+        paintClippingMask();
+        return;
+    }
     paintDecorations();
 }
 
@@ -201,6 +207,25 @@ void InlineBoxPainter::paintMask()
 
     if (pushTransparencyLayer)
         m_paintInfo.context().endTransparencyLayer();
+}
+
+void InlineBoxPainter::paintClippingMask()
+{
+    if (!m_paintInfo.shouldPaintWithinRoot(renderer()) || renderer().style().visibility() != Visibility::Visible || m_paintInfo.phase != PaintPhase::ClippingMask)
+        return;
+
+    auto& style = renderer().style();
+    if (style.clipPath() && style.clipPath()->type() == ClipPathOperation::Reference) {
+        const auto& referenceClipPathOperation = downcast<ReferenceClipPathOperation>(*style.clipPath());
+        if (auto* svgClipper = getRenderSVGResourceById<RenderSVGResourceClipper>(renderer().document(), referenceClipPathOperation.fragment())) {
+            LayoutSize offsetFromRoot;
+            LayoutRect rootRelativeBounds;
+            if (renderer().hasLayer())
+                rootRelativeBounds = renderer().layer()->calculateLayerBounds(renderer().layer()->root(), offsetFromRoot, { RenderLayer::UseLocalClipRectIfPossible });
+
+            SVGRenderSupport::paintSVGClippingMask(renderer(), m_paintInfo, svgClipper, rootRelativeBounds);
+        }
+    }
 }
 
 void InlineBoxPainter::paintDecorations()

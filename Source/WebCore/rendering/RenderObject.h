@@ -187,6 +187,7 @@ public:
 #if ENABLE(TREE_DEBUGGING)
     void showNodeTreeForThis() const;
     void showRenderTreeForThis() const;
+    void showSVGRenderTreeForThis() const;
     void showLineTreeForThis() const;
 
     void outputRenderObject(WTF::TextStream&, bool mark, int depth) const;
@@ -322,8 +323,6 @@ public:
     virtual bool isRenderMathMLUnderOver() const { return false; }
 #endif // ENABLE(MATHML)
 
-    // FIXME: Until all SVG renders can be subclasses of RenderSVGModelObject we have
-    // to add SVG renderer methods to RenderObject with an ASSERT_NOT_REACHED() default implementation.
     virtual bool isRenderSVGModelObject() const { return false; }
     virtual bool isRenderSVGBlock() const { return false; };
     virtual bool isSVGRoot() const { return false; }
@@ -345,13 +344,11 @@ public:
     virtual bool isSVGResourceFilter() const { return false; }
     virtual bool isSVGResourceClipper() const { return false; }
     virtual bool isSVGResourceFilterPrimitive() const { return false; }
+    virtual bool isSVGResourceMarker() const { return false; }
+    virtual bool isSVGResourceMasker() const { return false; }
+    virtual bool isSVGResourcePattern() const { return false; }
 
-    // FIXME: Those belong into a SVG specific base-class for all renderers (see above)
-    // Unfortunately we don't have such a class yet, because it's not possible for all renderers
-    // to inherit from RenderSVGObject -> RenderObject (some need RenderBlock inheritance for instance)
-    virtual void setNeedsTransformUpdate() { }
-    virtual void setNeedsBoundariesUpdate();
-    virtual bool needsBoundariesUpdate() { return false; }
+    inline bool isSVGLayerAwareRenderer() const { return isSVGRoot() || isRenderSVGModelObject() || isSVGText() || isSVGInline() || isSVGForeignObject(); }
 
     // Per SVG 1.1 objectBoundingBox ignores clipping, masking, filter effects, opacity and stroke-width.
     // This is used for all computation of objectBoundingBox relative units and by SVGLocatable::getBBox().
@@ -361,23 +358,7 @@ public:
     // The name objectBoundingBox is taken from the SVG 1.1 spec.
     virtual FloatRect objectBoundingBox() const;
     virtual FloatRect strokeBoundingBox() const;
-
-    // Returns the smallest rectangle enclosing all of the painted content
-    // respecting clipping, masking, filters, opacity, stroke-width and markers
-    virtual FloatRect repaintRectInLocalCoordinates() const;
-
-    // This only returns the transform="" value from the element
-    // most callsites want localToParentTransform() instead.
-    virtual AffineTransform localTransform() const;
-
-    // Returns the full transform mapping from local coordinates to local coords for the parent SVG renderer
-    // This includes any viewport transforms and x/y offsets as well as the transform="" value off the element.
-    virtual const AffineTransform& localToParentTransform() const;
-
-    // SVG uses FloatPoint precise hit testing, and passes the point in parent
-    // coordinates instead of in repaint container coordinates.  Eventually the
-    // rest of the rendering tree will move to a similar model.
-    virtual bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint& pointInParent, HitTestAction);
+    virtual FloatRect repaintBoundingBox() const;
 
     bool hasIntrinsicAspectRatio() const { return isReplaced() && (isImage() || isVideo() || isCanvas()); }
     bool isAnonymous() const { return m_bitfields.isAnonymous(); }
@@ -408,6 +389,7 @@ public:
     bool hasReflection() const { return m_bitfields.hasRareData() && rareData().hasReflection(); }
     bool isRenderFragmentedFlow() const { return m_bitfields.hasRareData() && rareData().isRenderFragmentedFlow(); }
     bool hasOutlineAutoAncestor() const { return m_bitfields.hasRareData() && rareData().hasOutlineAutoAncestor(); }
+    bool hasSVGTransform() const { return m_bitfields.hasRareData() && rareData().hasSVGTransform(); }
 
     bool isExcludedFromNormalLayout() const { return m_bitfields.isExcludedFromNormalLayout(); }
     void setIsExcludedFromNormalLayout(bool excluded) { m_bitfields.setIsExcludedFromNormalLayout(excluded); }
@@ -443,7 +425,7 @@ public:
     bool hasPotentiallyScrollableOverflow() const;
 
     bool hasTransformRelatedProperty() const { return m_bitfields.hasTransformRelatedProperty(); } // Transform, perspective or transform-style: preserve-3d.
-    bool hasTransform() const { return hasTransformRelatedProperty() && (style().hasTransform() || style().translate() || style().scale() || style().rotate()); }
+    bool hasTransform() const { return (hasTransformRelatedProperty() && (style().hasTransform() || style().translate() || style().scale() || style().rotate())) || hasSVGTransform(); }
 
     inline bool preservesNewline() const;
 
@@ -505,6 +487,7 @@ public:
     void setHasReflection(bool = true);
     void setIsRenderFragmentedFlow(bool = true);
     void setHasOutlineAutoAncestor(bool = true);
+    void setHasSVGTransform(bool = true);
 
     // Hook so that RenderTextControl can return the line height of its inner renderer.
     // For other renderers, the value is the same as lineHeight(false).
@@ -599,6 +582,7 @@ public:
     // Actually do the repaint of rect r for this object which has been computed in the coordinate space
     // of repaintContainer. If repaintContainer is nullptr, repaint via the view.
     void repaintUsingContainer(const RenderLayerModelObject* repaintContainer, const LayoutRect&, bool shouldClipToLayer = true) const;
+    void repaintUsingContainer(const RenderLayerModelObject* repaintContainer, const LayoutRect&, const LayoutRect&, bool shouldClipToLayer = true) const;
     
     // Repaint the entire object.  Called when, e.g., the color of a border changes, or when a border
     // style changes.
@@ -606,6 +590,7 @@ public:
 
     // Repaint a specific subrectangle within a given object.  The rect |r| is in the object's coordinate space.
     WEBCORE_EXPORT void repaintRectangle(const LayoutRect&, bool shouldClipToLayer = true) const;
+    void repaintRectangles(const LayoutRect& oldRepaintRect, const LayoutRect& newRepaintRect, bool shouldClipToLayer = true) const;
 
     // Repaint a slow repaint object, which, at this time, means we are repainting an object with background-attachment:fixed.
     void repaintSlowRepaintObject() const;
@@ -615,6 +600,7 @@ public:
         ApplyCompositedClips = 1 << 1,
         ApplyCompositedContainerScrolls  = 1 << 2,
         ApplyContainerClip = 1 << 3,
+        TranslateToSVGRendererOrigin = 1 << 4,
     };
     struct VisibleRectContext {
         VisibleRectContext(bool hasPositionFixedDescendant = false, bool dirtyRectIsFlipped = false, OptionSet<VisibleRectContextOption> options = { })
@@ -646,13 +632,11 @@ public:
     // of repaintContainer suitable for the given VisibleRectContext.
     LayoutRect computeRect(const LayoutRect&, const RenderLayerModelObject* repaintContainer, VisibleRectContext) const;
     LayoutRect computeRectForRepaint(const LayoutRect& rect, const RenderLayerModelObject* repaintContainer) const { return computeRect(rect, repaintContainer, visibleRectContextForRepaint()); }
-    FloatRect computeFloatRectForRepaint(const FloatRect&, const RenderLayerModelObject* repaintContainer) const;
 
     // Given a rect in the object's coordinate space, compute the location in container space where this rect is visible,
     // when clipping and scrolling as specified by the context. When using edge-inclusive intersection, return std::nullopt
     // rather than an empty rect if the rect is completely clipped out in container space.
     virtual std::optional<LayoutRect> computeVisibleRectInContainer(const LayoutRect&, const RenderLayerModelObject* repaintContainer, VisibleRectContext) const;
-    virtual std::optional<FloatRect> computeFloatVisibleRectInContainer(const FloatRect&, const RenderLayerModelObject* repaintContainer, VisibleRectContext) const;
 
     WEBCORE_EXPORT bool hasNonEmptyVisibleRectRespectingParentFrames() const;
 
@@ -935,6 +919,7 @@ private:
         ADD_BOOLEAN_BITFIELD(hasReflection, HasReflection);
         ADD_BOOLEAN_BITFIELD(isRenderFragmentedFlow, IsRenderFragmentedFlow);
         ADD_BOOLEAN_BITFIELD(hasOutlineAutoAncestor, HasOutlineAutoAncestor);
+        ADD_BOOLEAN_BITFIELD(hasSVGTransform, HasSVGTransform);
 
         // From RenderElement
         std::unique_ptr<RenderStyle> cachedFirstLineStyle;
@@ -942,7 +927,7 @@ private:
         WeakPtr<RenderBlockFlow> backdropRenderer;
     };
     
-    const RenderObject::RenderObjectRareData& rareData() const;
+    WEBCORE_EXPORT const RenderObject::RenderObjectRareData& rareData() const;
     RenderObjectRareData& ensureRareData();
     void removeRareData();
     
@@ -1140,12 +1125,12 @@ inline FloatQuad RenderObject::localToAbsoluteQuad(const FloatQuad& quad, Option
 
 inline auto RenderObject::visibleRectContextForRepaint() -> VisibleRectContext
 {
-    return { false, false, { VisibleRectContextOption::ApplyContainerClip, VisibleRectContextOption::ApplyCompositedContainerScrolls } };
+    return { false, false, { VisibleRectContextOption::ApplyContainerClip, VisibleRectContextOption::ApplyCompositedContainerScrolls, VisibleRectContextOption::TranslateToSVGRendererOrigin } };
 }
 
 inline auto RenderObject::visibleRectContextForSpatialNavigation() -> VisibleRectContext
 {
-    return { false, false, { VisibleRectContextOption::ApplyContainerClip, VisibleRectContextOption::ApplyCompositedContainerScrolls, VisibleRectContextOption::ApplyCompositedClips } };
+    return { false, false, { VisibleRectContextOption::ApplyContainerClip, VisibleRectContextOption::ApplyCompositedContainerScrolls, VisibleRectContextOption::TranslateToSVGRendererOrigin, VisibleRectContextOption::ApplyCompositedClips } };
 }
 
 inline bool RenderObject::isSetNeedsLayoutForbidden() const
@@ -1202,6 +1187,7 @@ WTF::TextStream& operator<<(WTF::TextStream&, const RenderObject&);
 
 #if ENABLE(TREE_DEBUGGING)
 void printRenderTreeForLiveDocuments();
+void printSVGRenderTreeForLiveDocuments();
 void printLayerTreeForLiveDocuments();
 void printGraphicsLayerTreeForLiveDocuments();
 #endif
@@ -1221,4 +1207,5 @@ SPECIALIZE_TYPE_TRAITS_END()
 void showNodeTree(const WebCore::RenderObject*);
 void showLineTree(const WebCore::RenderObject*);
 void showRenderTree(const WebCore::RenderObject*);
+void showSVGRenderTree(const WebCore::RenderObject*);
 #endif

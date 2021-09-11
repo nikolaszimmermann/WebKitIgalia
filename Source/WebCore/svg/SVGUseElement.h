@@ -68,7 +68,6 @@ private:
     void svgAttributeChanged(const QualifiedName&) override;
 
     RenderPtr<RenderElement> createElementRenderer(RenderStyle&&, const RenderTreePosition&) override;
-    Path toClipPath() override;
     bool selfHasRelativeLengths() const override;
     void notifyFinished(CachedResource&, const NetworkLoadMetrics&) final;
 

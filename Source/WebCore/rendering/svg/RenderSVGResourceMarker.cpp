@@ -39,16 +39,40 @@ RenderSVGResourceMarker::RenderSVGResourceMarker(SVGMarkerElement& element, Rend
 
 RenderSVGResourceMarker::~RenderSVGResourceMarker() = default;
 
+LayoutRect RenderSVGResourceMarker::overflowClipRect(const LayoutPoint& location, RenderFragmentContainer*, OverlayScrollbarSizeRelevancy, PaintPhase) const
+{
+    auto viewportRect = m_viewportDimension;
+    if (!m_supplementalLocalToParentTransform.isIdentity())
+        viewportRect = m_supplementalLocalToParentTransform.inverse().value_or(AffineTransform()).mapRect(viewportRect);
+
+    auto clipRect = enclosingLayoutRect(viewportRect);
+    clipRect.moveBy(location);
+    return clipRect;
+}
+
+void RenderSVGResourceMarker::updateFromStyle()
+{
+    RenderSVGResourceContainer::updateFromStyle();
+    setHasSVGTransform();
+
+    if (SVGRenderSupport::isOverflowHidden(*this))
+        setHasNonVisibleOverflow();
+}
+
+void RenderSVGResourceMarker::updateLayerInformation()
+{
+    if (SVGRenderSupport::isRenderingDisabledDueToEmptySVGViewBox(*this))
+        layer()->dirtyAncestorChainVisibleDescendantStatus();
+}
+
 void RenderSVGResourceMarker::layout()
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
+
     // Invalidate all resources if our layout changed.
-    if (everHadLayout() && selfNeedsLayout())
+    if (selfNeedsClientInvalidation())
         RenderSVGRoot::addResourceForClientInvalidation(this);
 
-    // RenderSVGHiddenContainer overwrites layout(). We need the
-    // layouting of RenderSVGContainer for calculating  local
-    // transformations and repaint.
     RenderSVGContainer::layout();
 }
 
@@ -62,33 +86,18 @@ void RenderSVGResourceMarker::removeClientFromCache(RenderElement& client, bool 
     markClientForInvalidation(client, markForInvalidation ? BoundariesInvalidation : ParentOnlyInvalidation);
 }
 
-void RenderSVGResourceMarker::applyViewportClip(PaintInfo& paintInfo)
+FloatRect RenderSVGResourceMarker::computeMarkerBoundingBox(const SVGBoundingBoxComputation::DecorationOptions& options, const AffineTransform& markerTransformation) const
 {
-    if (SVGRenderSupport::isOverflowHidden(*this))
-        paintInfo.context().clip(m_viewport);
-}
-
-FloatRect RenderSVGResourceMarker::markerBoundaries(const AffineTransform& markerTransformation) const
-{
-    FloatRect coordinates = RenderSVGContainer::repaintRectInLocalCoordinates();
+    SVGBoundingBoxComputation boundingBoxComputation(*this);
+    auto boundingBox = boundingBoxComputation.computeDecoratedBoundingBox(options);
 
     // Map repaint rect into parent coordinate space, in which the marker boundaries have to be evaluated
-    coordinates = localToParentTransform().mapRect(coordinates);
-
-    return markerTransformation.mapRect(coordinates);
-}
-
-const AffineTransform& RenderSVGResourceMarker::localToParentTransform() const
-{
-    m_localToParentTransform = AffineTransform::translation(m_viewport.x(), m_viewport.y()) * viewportTransform();
-    return m_localToParentTransform;
-    // If this class were ever given a localTransform(), then the above would read:
-    // return viewportTranslation * localTransform() * viewportTransform();
+    return markerTransformation.mapRect(m_supplementalLocalToParentTransform.mapRect(boundingBox));
 }
 
 FloatPoint RenderSVGResourceMarker::referencePoint() const
 {
-    SVGLengthContext lengthContext(&markerElement());
+    const auto& lengthContext = markerElement().lengthContext();
     return FloatPoint(markerElement().refX().value(lengthContext), markerElement().refY().value(lengthContext));
 }
 
@@ -97,61 +106,40 @@ float RenderSVGResourceMarker::angle() const
     float angle = -1;
     if (markerElement().orientType() == SVGMarkerOrientAngle)
         angle = markerElement().orientAngle().value();
-
     return angle;
 }
 
 AffineTransform RenderSVGResourceMarker::markerTransformation(const FloatPoint& origin, float autoAngle, float strokeWidth) const
 {
-    float markerAngle = angle();
-    bool useStrokeWidth = markerElement().markerUnits() == SVGMarkerUnitsStrokeWidth;
-
     AffineTransform transform;
     transform.translate(origin);
-    transform.rotate(markerAngle == -1 ? autoAngle : markerAngle);
-    transform = markerContentTransformation(transform, referencePoint(), useStrokeWidth ? strokeWidth : -1);
+    transform.rotate(markerElement().orientType() == SVGMarkerOrientAngle ? angle() : autoAngle);
+
+    // The 'referencePoint()' coordinate maps to SVGs refX/refY, given in coordinates relative to the viewport established by the marker
+    auto mappedOrigin = m_supplementalLocalToParentTransform.mapPoint(referencePoint());
+
+    if (markerElement().markerUnits() == SVGMarkerUnitsStrokeWidth)
+        transform.scaleNonUniform(strokeWidth, strokeWidth);
+
+    transform.translate(-mappedOrigin);
     return transform;
 }
 
-void RenderSVGResourceMarker::draw(PaintInfo& paintInfo, const AffineTransform& transform)
+void RenderSVGResourceMarker::calculateViewport()
 {
-    // An empty viewBox disables rendering.
-    if (markerElement().hasAttribute(SVGNames::viewBoxAttr) && markerElement().hasEmptyViewBox())
-        return;
+    RenderSVGResourceContainer::calculateViewport();
 
-    PaintInfo info(paintInfo);
-    GraphicsContextStateSaver stateSaver(info.context());
-    info.applyTransform(transform);
-    RenderSVGContainer::paint(info, IntPoint());
+    const auto& lengthContext = markerElement().lengthContext();
+    m_viewportDimension = { 0, 0, markerElement().markerWidth().value(lengthContext), markerElement().markerHeight().value(lengthContext) };
+
+    auto newTransform = markerElement().viewBoxToViewTransform(m_viewportDimension.width(), m_viewportDimension.height());
+    if (newTransform != m_supplementalLocalToParentTransform)
+        m_supplementalLocalToParentTransform = newTransform;
 }
 
-AffineTransform RenderSVGResourceMarker::markerContentTransformation(const AffineTransform& contentTransformation, const FloatPoint& origin, float strokeWidth) const
+void RenderSVGResourceMarker::applyTransform(TransformationMatrix& transform, const RenderStyle& style, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption> options) const
 {
-    // The 'origin' coordinate maps to SVGs refX/refY, given in coordinates relative to the viewport established by the marker
-    FloatPoint mappedOrigin = viewportTransform().mapPoint(origin);
-
-    AffineTransform transformation = contentTransformation;
-    if (strokeWidth != -1)
-        transformation.scaleNonUniform(strokeWidth, strokeWidth);
-
-    transformation.translate(-mappedOrigin);
-    return transformation;
-}
-
-AffineTransform RenderSVGResourceMarker::viewportTransform() const
-{
-    return markerElement().viewBoxToViewTransform(m_viewport.width(), m_viewport.height());
-}
-
-void RenderSVGResourceMarker::calcViewport()
-{
-    if (!selfNeedsLayout())
-        return;
-
-    SVGLengthContext lengthContext(&markerElement());
-    float w = markerElement().markerWidth().value(lengthContext);
-    float h = markerElement().markerHeight().value(lengthContext);
-    m_viewport = FloatRect(0, 0, w, h);
+    SVGRenderSupport::applyTransform(*this, transform, style, boundingBox, m_supplementalLocalToParentTransform, std::nullopt, options);
 }
 
 }

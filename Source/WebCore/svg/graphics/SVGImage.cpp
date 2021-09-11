@@ -495,6 +495,9 @@ EncodedDataStatus SVGImage::dataChanged(bool allDataReceived)
         m_chromeClient = makeUnique<SVGImageChromeClient>(this);
         pageConfiguration.chromeClient = m_chromeClient.get();
 
+        ImageObserver* observer = imageObserver();
+        ASSERT(observer);
+
         // FIXME: If this SVG ends up loading itself, we might leak the world.
         // The Cache code does not know about CachedImages holding Frames and
         // won't know to break the cycle.
@@ -521,7 +524,7 @@ EncodedDataStatus SVGImage::dataChanged(bool allDataReceived)
 
         ASSERT(loader.activeDocumentLoader()); // DocumentLoader should have been created by frame->init().
         loader.activeDocumentLoader()->writer().setMIMEType("image/svg+xml");
-        loader.activeDocumentLoader()->writer().begin(URL()); // create the empty document
+        loader.activeDocumentLoader()->writer().begin(observer->sourceUrl());
         data()->forEachSegment([&](auto& segment) {
             loader.activeDocumentLoader()->writer().addData(segment.data(), segment.size());
         });

@@ -19,11 +19,13 @@
 
 #pragma once
 
-#include "RenderSVGShape.h"
 #include "RenderStyleConstants.h"
+#include <wtf/OptionSet.h>
 #include <wtf/TypeCasts.h>
 
 namespace WebCore {
+
+class RenderSVGShape;
 
 enum RenderSVGResourceType {
     MaskerResourceType,
@@ -47,6 +49,7 @@ class Color;
 class FloatRect;
 class GraphicsContext;
 class Path;
+class RenderElement;
 class RenderObject;
 class RenderStyle;
 class RenderSVGResourceSolidColor;

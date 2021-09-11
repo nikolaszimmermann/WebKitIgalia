@@ -227,8 +227,8 @@ RefPtr<FilterEffect> SVGFEConvolveMatrixElement::build(SVGFilterBuilder* filterB
         targetYValue = static_cast<int>(floorf(orderYValue / 2));
 
     // Spec says default kernelUnitLength is 1.0, and a specified length cannot be 0.
-    int kernelUnitLengthXValue = kernelUnitLengthX();
-    int kernelUnitLengthYValue = kernelUnitLengthY();
+    float kernelUnitLengthXValue = kernelUnitLengthX();
+    float kernelUnitLengthYValue = kernelUnitLengthY();
     if (!hasAttribute(SVGNames::kernelUnitLengthAttr)) {
         kernelUnitLengthXValue = 1;
         kernelUnitLengthYValue = 1;

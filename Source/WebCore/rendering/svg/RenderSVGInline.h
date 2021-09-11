@@ -37,7 +37,6 @@ private:
     void element() const = delete;
 
     const char* renderName() const override { return "RenderSVGInline"; }
-    bool requiresLayer() const final { return false; }
     bool isSVGInline() const final { return true; }
 
     void updateFromStyle() final;
@@ -49,13 +48,7 @@ private:
     // this element, since we need it for filters.
     FloatRect objectBoundingBox() const final;
     FloatRect strokeBoundingBox() const final;
-    FloatRect repaintRectInLocalCoordinates() const final;
-
-    LayoutRect clippedOverflowRect(const RenderLayerModelObject* repaintContainer, VisibleRectContext) const final;
-    std::optional<FloatRect> computeFloatVisibleRectInContainer(const FloatRect&, const RenderLayerModelObject* container, VisibleRectContext) const final;
-    void mapLocalToContainer(const RenderLayerModelObject* ancestorContainer, TransformState&, OptionSet<MapCoordinatesMode>, bool* wasFixed) const final;
-    const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const final;
-    void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const final;
+    FloatRect repaintBoundingBox() const final;
 
     std::unique_ptr<LegacyInlineFlowBox> createInlineFlowBox() final;
 

@@ -23,6 +23,8 @@
 
 #include "AffineTransform.h"
 #include "RenderSVGBlock.h"
+#include "SVGBoundingBoxComputation.h"
+#include "SVGRenderSupport.h"
 #include "SVGTextLayoutAttributesBuilder.h"
 
 namespace WebCore {
@@ -42,9 +44,7 @@ public:
     bool isChildAllowed(const RenderObject&, const RenderStyle&) const override;
 
     void setNeedsPositioningValuesUpdate() { m_needsPositioningValuesUpdate = true; }
-    void setNeedsTransformUpdate() override { m_needsTransformUpdate = true; }
     void setNeedsTextMetricsUpdate() { m_needsTextMetricsUpdate = true; }
-    FloatRect repaintRectInLocalCoordinates() const override;
 
     static RenderSVGText* locateRenderSVGTextAncestor(RenderObject&);
     static const RenderSVGText* locateRenderSVGTextAncestor(const RenderObject&);
@@ -58,8 +58,13 @@ public:
     void subtreeStyleDidChange(RenderSVGInlineText*);
     void subtreeTextDidChange(RenderSVGInlineText*);
 
-    FloatRect objectBoundingBox() const override { return frameRect(); }
-    FloatRect strokeBoundingBox() const override;
+    FloatRect objectBoundingBox() const final { return m_objectBoundingBox; }
+    FloatRect strokeBoundingBox() const final;
+    FloatRect repaintBoundingBox() const final { return SVGBoundingBoxComputation::computeRepaintBoundingBox(*this); }
+
+    void updatePositionAndOverflow(const FloatRect&);
+
+    LayoutRect visualOverflowRectEquivalent() const { return SVGBoundingBoxComputation::computeVisualOverflowRect(*this); }
 
 private:
     void graphicsElement() const = delete;
@@ -67,31 +72,28 @@ private:
     const char* renderName() const override { return "RenderSVGText"; }
     bool isSVGText() const override { return true; }
 
-    void paint(PaintInfo&, const LayoutPoint&) override;
-    bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint& pointInParent, HitTestAction) override;
-    VisiblePosition positionForPoint(const LayoutPoint&, const RenderFragmentContainer*) override;
+    LayoutPoint paintingLocation() const { return toLayoutPoint(location() - flooredLayoutPoint(m_objectBoundingBox.minXMinYCorner())); }
 
-    bool requiresLayer() const override { return false; }
+    void paint(PaintInfo&, const LayoutPoint&) override;
+    bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
+    VisiblePosition positionForPoint(const LayoutPoint&, const RenderFragmentContainer*) override;
+    void addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) override;
+
     void layout() override;
 
-    void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const override;
-
     void willBeDestroyed() override;
-
-    const AffineTransform& localToParentTransform() const override { return m_localTransform; }
-    AffineTransform localTransform() const override { return m_localTransform; }
 
     RenderBlock* firstLineBlock() const override;
 
     bool shouldHandleSubtreeMutations() const;
 
-    bool m_needsReordering : 1;
-    bool m_needsPositioningValuesUpdate : 1;
-    bool m_needsTransformUpdate : 1;
-    bool m_needsTextMetricsUpdate : 1;
-    AffineTransform m_localTransform;
+    bool m_needsReordering { false };
+    bool m_needsPositioningValuesUpdate { false };
+    bool m_needsTextMetricsUpdate { false };
     SVGTextLayoutAttributesBuilder m_layoutAttributesBuilder;
     Vector<SVGTextLayoutAttributes*> m_layoutAttributes;
+
+    FloatRect m_objectBoundingBox;
 };
 
 } // namespace WebCore

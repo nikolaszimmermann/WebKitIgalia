@@ -429,24 +429,6 @@ bool WTFWillLogWithLevel(WTFLogChannel* channel, WTFLogLevel level)
     return channel->level >= level && channel->state != WTFLogChannelState::Off;
 }
 
-void WTFLogWithLevel(WTFLogChannel* channel, WTFLogLevel level, const char* format, ...)
-{
-    if (level != WTFLogLevel::Always && level > channel->level)
-        return;
-
-    if (channel->level != WTFLogLevel::Always && channel->state == WTFLogChannelState::Off)
-        return;
-
-    va_list args;
-    va_start(args, format);
-
-    ALLOW_NONLITERAL_FORMAT_BEGIN
-    WTFLog(channel, format, args);
-    ALLOW_NONLITERAL_FORMAT_END
-
-    va_end(args);
-}
-
 WTF_ATTRIBUTE_PRINTF(2, 0)
 static void WTFLogVaList(WTFLogChannel* channel, const char* format, va_list args)
 {
@@ -470,6 +452,24 @@ static void WTFLogVaList(WTFLogChannel* channel, const char* format, va_list arg
     loggingAccumulator().accumulate(loggingString);
 
     logToStderr(loggingString.utf8().data());
+}
+
+void WTFLogWithLevel(WTFLogChannel* channel, WTFLogLevel level, const char* format, ...)
+{
+    if (level != WTFLogLevel::Always && level > channel->level)
+        return;
+
+    if (channel->level != WTFLogLevel::Always && channel->state == WTFLogChannelState::Off)
+        return;
+
+    va_list args;
+    va_start(args, format);
+
+    ALLOW_NONLITERAL_FORMAT_BEGIN
+    WTFLogVaList(channel, format, args);
+    ALLOW_NONLITERAL_FORMAT_END
+
+    va_end(args);
 }
 
 void WTFLog(WTFLogChannel* channel, const char* format, ...)

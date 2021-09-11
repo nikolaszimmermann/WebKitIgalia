@@ -25,6 +25,7 @@
 #include "AffineTransform.h"
 #include "ElementIterator.h"
 #include "PathTraversalState.h"
+#include "RenderLayerModelObject.h"
 #include "RenderSVGResource.h"
 #include "SVGElementTypeHelpers.h"
 #include "SVGImageElement.h"
@@ -249,8 +250,9 @@ void SVGAnimateMotionElement::applyResultsToTarget()
     if (!targetElement)
         return;
 
-    if (RenderElement* renderer = targetElement->renderer()) {
-        renderer->setNeedsTransformUpdate();
+    if (auto* renderer = targetElement->renderer()) {
+        if (is<RenderLayerModelObject>(renderer))
+            downcast<RenderLayerModelObject>(renderer)->svgAnimatedLocalTransformChanged();
         RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
     }
 
@@ -264,8 +266,9 @@ void SVGAnimateMotionElement::applyResultsToTarget()
         if (!transform || *transform == *targetSupplementalTransform)
             continue;
         *transform = *targetSupplementalTransform;
-        if (RenderElement* renderer = instance->renderer()) {
-            renderer->setNeedsTransformUpdate();
+        if (auto* renderer = instance->renderer()) {
+            if (is<RenderLayerModelObject>(renderer))
+                downcast<RenderLayerModelObject>(renderer)->svgAnimatedLocalTransformChanged();
             RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
         }
     }

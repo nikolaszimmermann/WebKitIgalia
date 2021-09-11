@@ -53,6 +53,7 @@ private:
     InlineBoxPainter(const InlineIterator::InlineBox&, PaintInfo&, const LayoutPoint& paintOffset);
 
     void paintMask();
+    void paintClippingMask();
     void paintDecorations();
     void paintFillLayers(const Color&, const FillLayer&, const LayoutRect& paintRect, CompositeOperator);
     void paintFillLayer(const Color&, const FillLayer&, const LayoutRect& paintRect, CompositeOperator);

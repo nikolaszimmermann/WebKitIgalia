@@ -176,9 +176,4 @@ void SVGPatternElement::collectPatternAttributes(PatternAttributes& attributes) 
         attributes.setPatternContentElement(this);
 }
 
-AffineTransform SVGPatternElement::localCoordinateSpaceTransform(SVGLocatable::CTMScope) const
-{
-    return patternTransform().concatenate();
-}
-
 }

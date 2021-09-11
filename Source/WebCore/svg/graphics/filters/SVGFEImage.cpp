@@ -27,9 +27,11 @@
 #include "Filter.h"
 #include "GraphicsContext.h"
 #include "RenderElement.h"
-#include "RenderTreeAsText.h"
+#include "RenderLayer.h"
+#include "RenderLayerModelObject.h"
+#include "RenderSVGRoot.h"
 #include "SVGElement.h"
-#include "SVGRenderingContext.h"
+#include "SVGRenderSupport.h"
 #include "SVGURIReference.h"
 #include <wtf/text/TextStream.h>
 
@@ -63,12 +65,10 @@ Ref<FEImage> FEImage::createWithIRIReference(Filter& filter, TreeScope& treeScop
 void FEImage::determineAbsolutePaintRect()
 {
     FloatRect paintRect = filter().absoluteTransform().mapRect(filterPrimitiveSubregion());
-    FloatRect srcRect;
     if (m_image) {
-        srcRect.setSize(m_image->size());
+        FloatRect srcRect(FloatPoint(), m_image->size());
         m_preserveAspectRatio.transformRect(paintRect, srcRect);
-    } else if (RenderElement* renderer = referencedRenderer())
-        srcRect = filter().absoluteTransform().mapRect(renderer->repaintRectInLocalCoordinates());
+    }
 
     if (clipsToBounds())
         paintRect.intersect(maxEffectRect());
@@ -104,7 +104,7 @@ void FEImage::platformApplySoftware()
 
     FloatRect srcRect;
     if (renderer)
-        srcRect = filter().absoluteTransform().mapRect(renderer->repaintRectInLocalCoordinates());
+        srcRect = filter().absoluteTransform().mapRect(renderer->repaintBoundingBox());
     else {
         srcRect = FloatRect(FloatPoint(), m_image->size());
         m_preserveAspectRatio.transformRect(destRect, srcRect);
@@ -116,22 +116,24 @@ void FEImage::platformApplySoftware()
     auto& context = resultImage->context();
 
     if (renderer) {
+        ASSERT(renderer->hasLayer());
+
         const AffineTransform& absoluteTransform = filter().absoluteTransform();
         context.concatCTM(absoluteTransform);
 
+        AffineTransform contentTransform;
         RefPtr contextNode = downcast<SVGElement>(renderer->element());
         if (contextNode->hasRelativeLengths()) {
-            SVGLengthContext lengthContext(contextNode.get());
-            FloatSize viewportSize;
+            const auto& lengthContext = contextNode->lengthContext();
 
             // If we're referencing an element with percentage units, eg. <rect with="30%"> those values were resolved against the viewport.
             // Build up a transformation that maps from the viewport space to the filter primitive subregion.
-            if (lengthContext.determineViewport(viewportSize))
-                context.concatCTM(makeMapBetweenRects(FloatRect(FloatPoint(), viewportSize), destRect));
+            auto viewportSize = lengthContext.viewportSize();
+            if (!viewportSize.isEmpty())
+                contentTransform = makeMapBetweenRects(FloatRect(FloatPoint(), viewportSize), destRect);
         }
 
-        AffineTransform contentTransformation;
-        SVGRenderingContext::renderSubtreeToContext(context, *renderer, contentTransformation);
+        downcast<RenderLayerModelObject>(*renderer).layer()->paintSVGResourceLayer(resultImage->context(), LayoutRect::infiniteRect(), contentTransform);
         return;
     }
 
@@ -143,8 +145,9 @@ TextStream& FEImage::externalRepresentation(TextStream& ts, RepresentationType r
     FloatSize imageSize;
     if (m_image)
         imageSize = m_image->size();
-    else if (RenderObject* renderer = referencedRenderer())
-        imageSize = enclosingIntRect(renderer->repaintRectInLocalCoordinates()).size();
+    else if (auto* renderer = referencedRenderer())
+        imageSize = enclosingIntRect(renderer->repaintBoundingBox()).size();
+
     ts << indent << "[feImage";
     FilterEffect::externalRepresentation(ts, representation);
     ts << " image-size=\"" << imageSize.width() << "x" << imageSize.height() << "\"]\n";

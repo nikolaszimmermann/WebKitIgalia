@@ -739,7 +739,7 @@ static void writeLayers(TextStream& ts, const RenderLayer& rootLayer, RenderLaye
     layer.updateLayerListsIfNeeded();
     layer.updateDescendantDependentFlags();
 
-    bool shouldPaint = (behavior.contains(RenderAsTextFlag::ShowAllLayers)) ? true : layer.intersectsDamageRect(layerBounds, damageRect.rect(), &rootLayer, layer.offsetFromAncestor(&rootLayer));
+    bool shouldPaint = (behavior.contains(RenderAsTextFlag::ShowAllLayers)) ? true : layer.intersectsDamageRect(layerBounds, damageRect.rect(), &rootLayer, offsetFromRoot);
     auto negativeZOrderLayers = layer.negativeZOrderLayers();
     bool paintsBackgroundSeparately = negativeZOrderLayers.size() > 0;
     if (shouldPaint && paintsBackgroundSeparately) {

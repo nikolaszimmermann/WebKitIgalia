@@ -66,6 +66,8 @@
 #include "RenderLayerScrollableArea.h"
 #include "RenderMedia.h"
 #include "RenderModel.h"
+#include "RenderSVGModelObject.h"
+#include "RenderSVGRoot.h"
 #include "RenderVideo.h"
 #include "RenderView.h"
 #include "RuntimeEnabledFeatures.h"
@@ -251,7 +253,7 @@ RenderLayerBacking::~RenderLayerBacking()
     updateOverflowControlsLayers(false, false, false);
     updateForegroundLayer(false);
     updateBackgroundLayer(false);
-    updateMaskingLayer(false, false);
+    updateMaskingLayer(false, false, false);
     updateScrollingLayers(false);
     
     ASSERT(!m_viewportConstrainedNodeID);
@@ -346,6 +348,7 @@ Ref<GraphicsLayer> RenderLayerBacking::createGraphicsLayer(const String& name, G
     auto graphicsLayer = GraphicsLayer::create(graphicsLayerFactory, *this, layerType);
 
     graphicsLayer->setName(name);
+    graphicsLayer->setUsesSVGTransformationRules(m_owningLayer.usesSVGTransformationRules());
 
 #if PLATFORM(COCOA) && USE(CA)
     graphicsLayer->setAcceleratesDrawing(compositor().acceleratedDrawingEnabled());
@@ -603,26 +606,42 @@ void RenderLayerBacking::destroyGraphicsLayers()
     GraphicsLayer::unparentAndClear(m_graphicsLayer);
 }
 
-static LayoutRect scrollContainerLayerBox(const RenderBox& renderBox)
+static LayoutRect scrollContainerLayerBox(const RenderLayerModelObject& renderer)
 {
-    return renderBox.paddingBoxRect();
+    if (is<RenderBox>(renderer))
+        return downcast<RenderBox>(renderer).paddingBoxRect();
+    // No scrollbars or borders on plain SVG renderers -> paddingBoxRect = borderBoxRect for SVG.
+    if (is<RenderSVGModelObject>(renderer))
+        return downcast<RenderSVGModelObject>(renderer).borderBoxRectEquivalent();
+    return LayoutRect();
 }
 
-static LayoutRect clippingLayerBox(const RenderBox& renderBox)
+static LayoutRect clippingLayerBox(const RenderLayerModelObject& renderer)
 {
     LayoutRect result = LayoutRect::infiniteRect();
-    if (renderBox.hasNonVisibleOverflow())
-        result = renderBox.overflowClipRect({ }, 0); // FIXME: Incorrect for CSS regions.
-
-    if (renderBox.hasClip())
-        result.intersect(renderBox.clipRect({ }, 0)); // FIXME: Incorrect for CSS regions.
+    if (is<RenderBox>(renderer)) {
+        auto& renderBox = downcast<RenderBox>(renderer);
+        if (renderBox.hasNonVisibleOverflow())
+            result = renderBox.overflowClipRect({ }, 0); // FIXME: Incorrect for CSS regions.
+        if (renderBox.hasClip())
+            result.intersect(renderBox.clipRect({ }, 0)); // FIXME: Incorrect for CSS regions.
+    } else if (is<RenderSVGModelObject>(renderer)) {
+        auto& svgModelObject = downcast<RenderSVGModelObject>(renderer);
+        if (svgModelObject.hasNonVisibleOverflow())
+            result = svgModelObject.overflowClipRect({ }, 0); // FIXME: Incorrect for CSS regions.
+    }
 
     return result;
 }
 
-static LayoutRect overflowControlsHostLayerRect(const RenderBox& renderBox)
+static LayoutRect overflowControlsHostLayerRect(const RenderLayerModelObject& renderer)
 {
-    return renderBox.paddingBoxRectIncludingScrollbar();
+    if (is<RenderBox>(renderer))
+        return downcast<RenderBox>(renderer).paddingBoxRectIncludingScrollbar();
+    // No scrollbars or borders on plain SVG renderers -> paddingBoxRect = borderBoxRect for SVG.
+    if (is<RenderSVGModelObject>(renderer))
+        return downcast<RenderSVGModelObject>(renderer).borderBoxRectEquivalent();
+    return LayoutRect();
 }
 
 void RenderLayerBacking::updateOpacity(const RenderStyle& style)
@@ -636,21 +655,30 @@ void RenderLayerBacking::updateTransform(const RenderStyle& style)
     // baked into it, and we don't want that.
     TransformationMatrix t;
     if (m_owningLayer.hasTransform()) {
-        auto& renderBox = downcast<RenderBox>(renderer());
-        style.applyTransform(t, snapRectToDevicePixels(renderBox.borderBoxRect(), deviceScaleFactor()), RenderStyle::individualTransformOperations);
+        auto referenceBox = m_owningLayer.transformReferenceBox();
+        renderer().applyTransform(t, style, referenceBox, RenderStyle::individualTransformOperations);
         makeMatrixRenderable(t, compositor().canRender3DTransforms());
     }
     
     if (m_contentsContainmentLayer) {
         m_contentsContainmentLayer->setTransform(t);
         m_graphicsLayer->setTransform({ });
+
+        if (is<RenderSVGRoot>(m_owningLayer.renderer())) {
+            auto viewBoxTransform = downcast<RenderSVGRoot>(m_owningLayer.renderer()).supplementalLocalToParentTransform();
+            if (!viewBoxTransform.isIdentity()) {
+                auto defaultAnchorPointSVG = FloatPoint3D { 0, 0, 0 };
+                m_graphicsLayer->setAnchorPoint(defaultAnchorPointSVG);
+                m_graphicsLayer->setTransform(viewBoxTransform);
+            }
+        }
     } else
         m_graphicsLayer->setTransform(t);
 }
 
 void RenderLayerBacking::updateChildrenTransformAndAnchorPoint(const LayoutRect& primaryGraphicsLayerRect, LayoutSize offsetFromParentGraphicsLayer)
 {
-    if (!renderer().hasTransformRelatedProperty()) {
+    if (!renderer().hasTransformRelatedProperty() && !renderer().hasSVGTransform()) {
         auto defaultAnchorPoint = FloatPoint3D { 0.5, 0.5, 0 };
         m_graphicsLayer->setAnchorPoint(defaultAnchorPoint);
         if (m_contentsContainmentLayer)
@@ -661,10 +689,9 @@ void RenderLayerBacking::updateChildrenTransformAndAnchorPoint(const LayoutRect&
         return;
     }
 
-    auto& renderBox = downcast<RenderBox>(renderer());
     const auto deviceScaleFactor = this->deviceScaleFactor();
-    auto borderBoxRect = renderBox.borderBoxRect();
-    auto transformOrigin = computeTransformOriginForPainting(borderBoxRect);
+    auto transformReferenceBox = m_owningLayer.transformReferenceBox();
+    auto transformOrigin = computeTransformOriginForPainting(transformReferenceBox);
     auto layerOffset = roundPointToDevicePixels(toLayoutPoint(offsetFromParentGraphicsLayer), deviceScaleFactor);
     auto anchor = FloatPoint3D {
         primaryGraphicsLayerRect.width() ? ((layerOffset.x() - primaryGraphicsLayerRect.x()) + transformOrigin.x()) / primaryGraphicsLayerRect.width() : 0.5f,
@@ -692,18 +719,24 @@ void RenderLayerBacking::updateChildrenTransformAndAnchorPoint(const LayoutRect&
     };
 
     if (!renderer().style().hasPerspective()) {
-        removeChildrenTransformFromLayers();
+        GraphicsLayer* layerToIgnore = nullptr;
+        if (m_contentsContainmentLayer && is<RenderSVGRoot>(renderer()))
+            layerToIgnore = m_contentsContainmentLayer.get();
+        removeChildrenTransformFromLayers(layerToIgnore);
         return;
     }
 
+    // FIXME(SVG-Compositing): Handle or protect setting perspective on RenderSVGRoot + a viewBox, currently perspective
+    // will override the viewBox transform, previously applied on 'm_contentsContainmentLayer'.
+
     auto layerForChildrenTransform = [&] {
         if (m_scrollContainerLayer)
-            return std::make_tuple(m_scrollContainerLayer.get(), scrollContainerLayerBox(renderBox));
+            return std::make_tuple(m_scrollContainerLayer.get(), FloatRect(scrollContainerLayerBox(renderer())));
 
         if (auto* layer = clippingLayer())
-            return std::make_tuple(layer, clippingLayerBox(renderBox));
+            return std::make_tuple(layer, FloatRect(clippingLayerBox(renderer())));
 
-        return std::make_tuple(m_graphicsLayer.get(), borderBoxRect);
+        return std::make_tuple(m_graphicsLayer.get(), transformReferenceBox);
     };
 
     auto [layerForPerspective, perspectiveRelativeBox] = layerForChildrenTransform();
@@ -738,17 +771,15 @@ void RenderLayerBacking::updateBackdropFiltersGeometry()
     if (!is<RenderBox>(renderer()))
         return;
 
-    auto& renderBox = downcast<RenderBox>(this->renderer());
-
     FloatRoundedRect backdropFiltersRect;
-    if (renderBox.style().hasBorderRadius() && !renderBox.hasClip()) {
-        auto roundedBoxRect = renderBox.roundedBorderBoxRect();
+    if (renderer().style().hasBorderRadius() && !renderer().hasClip()) {
+        auto roundedBoxRect = m_owningLayer.rendererRoundedBorderBoxRect();
         roundedBoxRect.move(contentOffsetInCompositingLayer());
         backdropFiltersRect = roundedBoxRect.pixelSnappedRoundedRectForPainting(deviceScaleFactor());
     } else {
-        auto boxRect = renderBox.borderBoxRect();
-        if (renderBox.hasClip())
-            boxRect.intersect(renderBox.clipRect(LayoutPoint(), nullptr));
+        auto boxRect = m_owningLayer.rendererBorderBoxRect();
+        if (renderer().hasClip())
+            boxRect.intersect(m_owningLayer.rendererClipRect(LayoutPoint(), nullptr));
         boxRect.move(contentOffsetInCompositingLayer());
         backdropFiltersRect = FloatRoundedRect(snapRectToDevicePixels(boxRect, deviceScaleFactor()));
     }
@@ -858,8 +889,8 @@ bool RenderLayerBacking::updateCompositedBounds()
         if (&m_owningLayer != rootLayer)
             clippingBounds.intersect(m_owningLayer.backgroundClipRect(RenderLayer::ClipRectsContext(rootLayer, AbsoluteClipRects)).rect()); // FIXME: Incorrect for CSS regions.
 
-        LayoutPoint delta = m_owningLayer.convertToLayerCoords(rootLayer, LayoutPoint(), RenderLayer::AdjustForColumns);
-        clippingBounds.move(-delta.x(), -delta.y());
+        auto delta = m_owningLayer.offsetFromAncestor(rootLayer);
+        clippingBounds.move(-delta.width(), -delta.height());
 
         layerBounds.intersect(clippingBounds);
     }
@@ -958,7 +989,7 @@ void RenderLayerBacking::updateAfterLayout(bool needsClippingUpdate, bool needsF
 // This can only update things that don't require up-to-date layout.
 void RenderLayerBacking::updateConfigurationAfterStyleChange()
 {
-    updateMaskingLayer(renderer().hasMask(), renderer().hasClipPath());
+    updateMaskingLayer(renderer().hasSVGMask(), renderer().hasMask(), renderer().hasClipPath());
 
     if (m_owningLayer.hasReflection()) {
         if (m_owningLayer.reflectionLayer()->backing()) {
@@ -994,7 +1025,9 @@ bool RenderLayerBacking::updateConfiguration(const RenderLayer* compositingAnces
 
     setBackgroundLayerPaintsFixedRootBackground(compositor.needsFixedRootBackgroundLayer(m_owningLayer));
 
-    if (updateBackgroundLayer(m_backgroundLayerPaintsFixedRootBackground || m_requiresBackgroundLayer))
+    // FIXME(SVG-Compositing): Split creation of m_backgroundLayer and m_contentsContainmentLayer, to avoid creating
+    // the unncessary background layer for SVG.
+    if (updateBackgroundLayer(m_backgroundLayerPaintsFixedRootBackground || m_requiresBackgroundLayer || is<RenderSVGRoot>(m_owningLayer.renderer())))
         layerConfigChanged = true;
 
     if (updateForegroundLayer(compositor.needsContentsCompositingLayer(m_owningLayer)))
@@ -1005,7 +1038,7 @@ bool RenderLayerBacking::updateConfiguration(const RenderLayer* compositingAnces
 
     if (usesCompositedScrolling) {
         // If it's scrollable, it has to be a box.
-        FloatRoundedRect contentsClippingRect = downcast<RenderBox>(renderer()).roundedBorderBoxRect().pixelSnappedRoundedRectForPainting(deviceScaleFactor());
+        FloatRoundedRect contentsClippingRect = m_owningLayer.rendererRoundedBorderBoxRect().pixelSnappedRoundedRectForPainting(deviceScaleFactor());
         needsDescendantsClippingLayer = contentsClippingRect.isRounded();
     } else
         needsDescendantsClippingLayer = RenderLayerCompositor::clipsCompositingDescendants(m_owningLayer);
@@ -1040,7 +1073,7 @@ bool RenderLayerBacking::updateConfiguration(const RenderLayer* compositingAnces
             m_graphicsLayer->addChild(*flatteningLayer);
     }
 
-    if (updateMaskingLayer(renderer().hasMask(), renderer().hasClipPath()))
+    if (updateMaskingLayer(renderer().hasSVGMask(), renderer().hasMask(), renderer().hasClipPath()))
         layerConfigChanged = true;
 
     updateChildClippingStrategy(needsDescendantsClippingLayer);
@@ -1261,11 +1294,9 @@ LayoutRect RenderLayerBacking::computeParentGraphicsLayerRect(const RenderLayer*
     if (!is<RenderBox>(compositedAncestor->renderer()))
         return parentGraphicsLayerRect;
 
-    auto& ancestorRenderBox = downcast<RenderBox>(compositedAncestor->renderer());
-
     if (ancestorBacking->hasClippingLayer()) {
         // If the compositing ancestor has a layer to clip children, we parent in that, and therefore position relative to it.
-        LayoutRect clippingBox = clippingLayerBox(ancestorRenderBox);
+        LayoutRect clippingBox = clippingLayerBox(compositedAncestor->renderer());
         LayoutSize clippingBoxOffset = computeOffsetFromAncestorGraphicsLayer(compositedAncestor, clippingBox.location(), deviceScaleFactor());
         parentGraphicsLayerRect = snappedGraphicsLayer(clippingBoxOffset, clippingBox.size(), deviceScaleFactor()).m_snappedRect;
     }
@@ -1275,7 +1306,7 @@ LayoutRect RenderLayerBacking::computeParentGraphicsLayerRect(const RenderLayer*
         ASSERT(scrollableArea);
 
         LayoutRect ancestorCompositedBounds = ancestorBacking->compositedBounds();
-        LayoutRect scrollContainerBox = scrollContainerLayerBox(ancestorRenderBox);
+        LayoutRect scrollContainerBox = scrollContainerLayerBox(compositedAncestor->renderer());
         ScrollOffset scrollOffset = scrollableArea->scrollOffset();
         parentGraphicsLayerRect = LayoutRect((scrollContainerBox.location() - toLayoutSize(ancestorCompositedBounds.location()) - toLayoutSize(scrollOffset)), scrollContainerBox.size());
     }
@@ -1365,9 +1396,8 @@ void RenderLayerBacking::updateGeometry(const RenderLayer* compositedAncestor)
     // If we have a layer that clips children, position it.
     LayoutRect clippingBox;
     if (auto* clipLayer = clippingLayer()) {
-        auto& renderBox = downcast<RenderBox>(renderer());
         // clipLayer is the m_childContainmentLayer.
-        clippingBox = clippingLayerBox(renderBox);
+        clippingBox = clippingLayerBox(renderer());
         // Clipping layer is parented in the primary graphics layer.
         LayoutSize clipBoxOffsetFromGraphicsLayer = toLayoutSize(clippingBox.location()) + rendererOffset.fromPrimaryGraphicsLayer();
         SnappedRectInfo snappedClippingGraphicsLayer = snappedGraphicsLayer(clipBoxOffsetFromGraphicsLayer, clippingBox.size(), deviceScaleFactor);
@@ -1377,7 +1407,7 @@ void RenderLayerBacking::updateGeometry(const RenderLayer* compositedAncestor)
 
         auto computeMasksToBoundsRect = [&] {
             if ((renderer().style().clipPath() || renderer().style().hasBorderRadius()) && !m_childClippingMaskLayer) {
-                FloatRoundedRect contentsClippingRect = renderBox.roundedBorderBoxRect().pixelSnappedRoundedRectForPainting(deviceScaleFactor);
+                FloatRoundedRect contentsClippingRect = m_owningLayer.rendererRoundedBorderBoxRect().pixelSnappedRoundedRectForPainting(deviceScaleFactor);
                 contentsClippingRect.move(LayoutSize(-clipLayer->offsetFromRenderer()));
                 return contentsClippingRect;
             }
@@ -1412,7 +1442,7 @@ void RenderLayerBacking::updateGeometry(const RenderLayer* compositedAncestor)
 
     if (m_scrollContainerLayer) {
         ASSERT(m_scrolledContentsLayer);
-        LayoutRect scrollContainerBox = scrollContainerLayerBox(downcast<RenderBox>(renderer()));
+        LayoutRect scrollContainerBox = scrollContainerLayerBox(renderer());
         LayoutRect parentLayerBounds = clippingLayer() ? scrollContainerBox : compositedBounds();
 
         // FIXME: need to do some pixel snapping here.
@@ -1450,7 +1480,7 @@ void RenderLayerBacking::updateGeometry(const RenderLayer* compositedAncestor)
     }
 
     if (m_overflowControlsContainer) {
-        LayoutRect overflowControlsBox = overflowControlsHostLayerRect(downcast<RenderBox>(renderer()));
+        LayoutRect overflowControlsBox = overflowControlsHostLayerRect(renderer());
         LayoutSize boxOffsetFromGraphicsLayer = toLayoutSize(overflowControlsBox.location()) + rendererOffset.fromPrimaryGraphicsLayer();
         SnappedRectInfo snappedBoxInfo = snappedGraphicsLayer(boxOffsetFromGraphicsLayer, overflowControlsBox.size(), deviceScaleFactor);
 
@@ -1490,7 +1520,7 @@ void RenderLayerBacking::updateGeometry(const RenderLayer* compositedAncestor)
             backgroundPosition = frameView.scrollPositionForFixedPosition();
             backgroundSize = frameView.layoutSize();
         } else {
-            auto boundingBox = renderer().objectBoundingBox();
+            auto boundingBox = m_owningLayer.rendererBorderBoxRect();
             backgroundPosition = boundingBox.location();
             backgroundSize = boundingBox.size();
         }
@@ -1580,7 +1610,7 @@ void RenderLayerBacking::updateAfterDescendants()
 
     updateDrawsContent(contentsInfo);
 
-    if (!m_isMainFrameRenderViewLayer && !m_isFrameLayerWithTiledBacking && !m_requiresBackgroundLayer) {
+    if (!m_isMainFrameRenderViewLayer && !m_isFrameLayerWithTiledBacking && !m_requiresBackgroundLayer && !m_owningLayer.renderer().isSVGRoot()) {
         // For non-root layers, background is always painted by the primary graphics layer.
         ASSERT(!m_backgroundLayer);
         m_graphicsLayer->setContentsOpaque(!m_hasSubpixelRounding && m_owningLayer.backgroundIsKnownToBeOpaqueInRect(compositedBounds()));
@@ -2154,7 +2184,7 @@ void RenderLayerBacking::positionOverflowControlsLayers()
     if (!scrollableArea || !scrollableArea->hasScrollbars())
         return;
     // FIXME: Should do device-pixel snapping.
-    auto box = renderBox();
+    auto box = m_owningLayer.renderBox();
     auto borderBox = snappedIntRect(box->borderBoxRect());
 
     // m_overflowControlsContainer is positioned using the paddingBoxRectIncludingScrollbar.
@@ -2247,17 +2277,17 @@ bool RenderLayerBacking::updateBackgroundLayer(bool needsBackgroundLayer)
 }
 
 // Masking layer is used for masks or clip-path.
-bool RenderLayerBacking::updateMaskingLayer(bool hasMask, bool hasClipPath)
+bool RenderLayerBacking::updateMaskingLayer(bool hasSVGMask, bool hasMask, bool hasClipPath)
 {
     bool layerChanged = false;
-    if (hasMask || hasClipPath) {
+    if (hasSVGMask || hasMask || hasClipPath) {
         OptionSet<GraphicsLayerPaintingPhase> maskPhases;
-        if (hasMask)
+        if (hasSVGMask || hasMask)
             maskPhases = GraphicsLayerPaintingPhase::Mask;
         
         if (hasClipPath) {
             // If we have a mask, we need to paint the combined clip-path and mask into the mask layer.
-            if (hasMask || renderer().style().clipPath()->type() == ClipPathOperation::Reference || !GraphicsLayer::supportsLayerType(GraphicsLayer::Type::Shape))
+            if (hasMask || hasSVGMask || renderer().style().clipPath()->type() == ClipPathOperation::Reference || !GraphicsLayer::supportsLayerType(GraphicsLayer::Type::Shape))
                 maskPhases.add(GraphicsLayerPaintingPhase::ClipPath);
         }
 
@@ -2291,7 +2321,8 @@ bool RenderLayerBacking::updateMaskingLayer(bool hasMask, bool hasClipPath)
 void RenderLayerBacking::updateChildClippingStrategy(bool needsDescendantsClippingLayer)
 {
     auto needsClipMaskLayer = [&] {
-        return needsDescendantsClippingLayer && !GraphicsLayer::supportsRoundedClip() && is<RenderBox>(renderer()) && (renderer().style().hasBorderRadius() || renderer().style().clipPath());
+        bool suitableRenderer = is<RenderBox>(renderer()) || is<RenderSVGModelObject>(renderer());
+        return needsDescendantsClippingLayer && !GraphicsLayer::supportsRoundedClip() && suitableRenderer && (renderer().style().hasBorderRadius() || renderer().style().clipPath());
     };
 
     auto* clippingLayer = this->clippingLayer();
@@ -2575,6 +2606,9 @@ void RenderLayerBacking::updateDirectlyCompositedBackgroundImage(PaintedContents
         return;
     }
 
+    if (!is<RenderBox>(renderer()))
+        return;
+
     auto destRect = backgroundBoxForSimpleContainerPainting();
     FloatSize phase;
     FloatSize tileSize;
@@ -2727,6 +2761,9 @@ bool RenderLayerBacking::isSimpleContainerCompositingLayer(PaintedContentsInfo& 
         return false;
 
     if (renderer().isTextControl())
+        return false;
+
+    if (is<RenderSVGModelObject>(renderer()))
         return false;
 
     if (contentsInfo.paintsBoxDecorations() || contentsInfo.paintsContent())
@@ -2941,14 +2978,19 @@ void RenderLayerBacking::updateImageContents(PaintedContentsInfo& contentsInfo)
     image->startAnimation();
 }
 
-FloatPoint3D RenderLayerBacking::computeTransformOriginForPainting(const LayoutRect& borderBox) const
+FloatPoint3D RenderLayerBacking::computeTransformOriginForPainting(const FloatRect& referenceBox) const
 {
-    const RenderStyle& style = renderer().style();
+    const auto& style = renderer().style();
 
     FloatPoint3D origin;
-    origin.setXY(roundPointToDevicePixels(pointForLengthPoint(style.transformOriginXY(), borderBox.size()), deviceScaleFactor()));
     origin.setZ(style.transformOriginZ());
 
+    if (m_owningLayer.usesSVGTransformationRules())
+        origin.setXY(toFloatPoint(referenceBox.location() - renderer().objectBoundingBox().location()) + floatPointForLengthPoint(style.transformOriginXY(), referenceBox.size()));
+    else {
+        ASSERT(referenceBox.location().isZero());
+        origin.setXY(roundPointToDevicePixels(pointForLengthPoint(style.transformOriginXY(), LayoutSize(referenceBox.size())), deviceScaleFactor()));
+    }
     return origin;
 }
 
@@ -2960,21 +3002,23 @@ LayoutSize RenderLayerBacking::contentOffsetInCompositingLayer() const
 
 LayoutRect RenderLayerBacking::contentsBox() const
 {
-    if (!is<RenderBox>(renderer()))
+    if (!is<RenderBox>(renderer()) && !is<RenderSVGModelObject>(renderer()))
         return LayoutRect();
 
-    auto& renderBox = downcast<RenderBox>(renderer());
     LayoutRect contentsRect;
 #if ENABLE(VIDEO)
-    if (is<RenderVideo>(renderBox))
-        contentsRect = downcast<RenderVideo>(renderBox).videoBox();
+    if (is<RenderVideo>(renderer()))
+        contentsRect = downcast<RenderVideo>(renderer()).videoBox();
     else
 #endif
-    if (is<RenderReplaced>(renderBox)) {
-        RenderReplaced& renderReplaced = downcast<RenderReplaced>(renderBox);
-        contentsRect = renderReplaced.replacedContentRect();
-    } else
-        contentsRect = renderBox.contentBoxRect();
+    if (is<RenderReplaced>(renderer()))
+        contentsRect = downcast<RenderReplaced>(renderer()).replacedContentRect();
+    else if (is<RenderSVGModelObject>(renderer()))
+        contentsRect = downcast<RenderSVGModelObject>(renderer()).contentBoxRectEquivalent();
+    else {
+        ASSERT(is<RenderBox>(renderer()));
+        contentsRect = downcast<RenderBox>(renderer()).contentBoxRect();
+    }
 
     contentsRect.move(contentOffsetInCompositingLayer());
     return contentsRect;
@@ -2999,10 +3043,15 @@ static LayoutRect backgroundRectForBox(const RenderBox& box)
 
 FloatRect RenderLayerBacking::backgroundBoxForSimpleContainerPainting() const
 {
-    if (!is<RenderBox>(renderer()))
+    LayoutRect backgroundBox;
+
+    if (is<RenderSVGModelObject>(renderer()))
+        backgroundBox = downcast<RenderSVGModelObject>(renderer()).borderBoxRectEquivalent();
+    else if (is<RenderBox>(renderer()))
+        backgroundBox = backgroundRectForBox(downcast<RenderBox>(renderer()));
+    else
         return FloatRect();
 
-    LayoutRect backgroundBox = backgroundRectForBox(downcast<RenderBox>(renderer()));
     backgroundBox.move(contentOffsetInCompositingLayer());
     return snapRectToDevicePixels(backgroundBox, deviceScaleFactor());
 }
@@ -3639,11 +3688,13 @@ void RenderLayerBacking::verifyNotPainting()
 
 bool RenderLayerBacking::startAnimation(double timeOffset, const Animation& animation, const KeyframeList& keyframes)
 {
+    bool shouldApplyAnimationsToTargetRenderer = renderer().isBox() || renderer().isSVGLayerAwareRenderer();
+
     bool hasOpacity = keyframes.containsProperty(CSSPropertyOpacity);
-    bool hasRotate = renderer().isBox() && keyframes.containsProperty(CSSPropertyRotate);
-    bool hasScale = renderer().isBox() && keyframes.containsProperty(CSSPropertyScale);
-    bool hasTranslate = renderer().isBox() && keyframes.containsProperty(CSSPropertyTranslate);
-    bool hasTransform = renderer().isBox() && keyframes.containsProperty(CSSPropertyTransform);
+    bool hasRotate = shouldApplyAnimationsToTargetRenderer && keyframes.containsProperty(CSSPropertyRotate);
+    bool hasScale = shouldApplyAnimationsToTargetRenderer && keyframes.containsProperty(CSSPropertyScale);
+    bool hasTranslate = shouldApplyAnimationsToTargetRenderer && keyframes.containsProperty(CSSPropertyTranslate);
+    bool hasTransform = shouldApplyAnimationsToTargetRenderer && keyframes.containsProperty(CSSPropertyTransform);
     bool hasFilter = keyframes.containsProperty(CSSPropertyFilter);
 
     bool hasBackdropFilter = false;
@@ -3705,16 +3756,20 @@ bool RenderLayerBacking::startAnimation(double timeOffset, const Animation& anim
 
     bool didAnimate = false;
 
-    if (hasRotate && m_graphicsLayer->addAnimation(rotateVector, snappedIntRect(renderBox()->borderBoxRect()).size(), &animation, keyframes.animationName(), timeOffset))
+    auto snappedBorderBoxRect = m_owningLayer.transformReferenceBox();
+    if (!renderer().isSVGLayerAwareRenderer())
+        snappedBorderBoxRect = snappedIntRect(LayoutRect(snappedBorderBoxRect));
+
+    if (hasRotate && m_graphicsLayer->addAnimation(rotateVector, snappedBorderBoxRect.size(), &animation, keyframes.animationName(), timeOffset))
         didAnimate = true;
 
-    if (hasScale && m_graphicsLayer->addAnimation(scaleVector, snappedIntRect(renderBox()->borderBoxRect()).size(), &animation, keyframes.animationName(), timeOffset))
+    if (hasScale && m_graphicsLayer->addAnimation(scaleVector, snappedBorderBoxRect.size(), &animation, keyframes.animationName(), timeOffset))
         didAnimate = true;
 
-    if (hasTranslate && m_graphicsLayer->addAnimation(translateVector, snappedIntRect(renderBox()->borderBoxRect()).size(), &animation, keyframes.animationName(), timeOffset))
+    if (hasTranslate && m_graphicsLayer->addAnimation(translateVector, snappedBorderBoxRect.size(), &animation, keyframes.animationName(), timeOffset))
         didAnimate = true;
 
-    if (hasTransform && m_graphicsLayer->addAnimation(transformVector, snappedIntRect(renderBox()->borderBoxRect()).size(), &animation, keyframes.animationName(), timeOffset))
+    if (hasTransform && m_graphicsLayer->addAnimation(transformVector, snappedBorderBoxRect.size(), &animation, keyframes.animationName(), timeOffset))
         didAnimate = true;
 
     if (hasOpacity && m_graphicsLayer->addAnimation(opacityVector, IntSize { }, &animation, keyframes.animationName(), timeOffset))
@@ -3945,15 +4000,18 @@ TextStream& operator<<(TextStream& ts, const RenderLayerBacking& backing)
 
 TransformationMatrix RenderLayerBacking::transformMatrixForProperty(AnimatedPropertyID property) const
 {
-    auto* box = renderBox();
-    if (!box)
+    if (!is<RenderBox>(renderer()) && !is<RenderSVGModelObject>(renderer()))
         return { };
 
     TransformationMatrix matrix;
 
+    auto snappedBorderBoxRect = m_owningLayer.transformReferenceBox();
+    if (!renderer().isSVGLayerAwareRenderer())
+        snappedBorderBoxRect = snappedIntRect(LayoutRect(snappedBorderBoxRect));
+
     auto applyTransformOperation = [&](TransformOperation* operation) {
         if (operation)
-            operation->apply(matrix, snappedIntRect(renderBox()->borderBoxRect()).size());
+            operation->apply(matrix, snappedBorderBoxRect.size());
     };
 
     if (property == AnimatedPropertyTranslate)
@@ -3963,7 +4021,7 @@ TransformationMatrix RenderLayerBacking::transformMatrixForProperty(AnimatedProp
     else if (property == AnimatedPropertyRotate)
         applyTransformOperation(renderer().style().rotate());
     else if (property == AnimatedPropertyTransform)
-        renderer().style().transform().apply(snappedIntRect(renderBox()->borderBoxRect()).size(), matrix);
+        renderer().style().transform().apply(snappedBorderBoxRect.size(), matrix);
     else
         ASSERT_NOT_REACHED();
 

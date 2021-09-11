@@ -622,9 +622,9 @@ inline RefPtr<ClipPathOperation> BuilderConverter::convertClipPath(BuilderState&
         auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
         if (primitiveValue.primitiveType() == CSSUnitType::CSS_URI) {
             String cssURLValue = primitiveValue.stringValue();
-            String fragment = SVGURIReference::fragmentIdentifierFromIRIString(cssURLValue, builderState.document());
+            StringView fragment = SVGURIReference::fragmentIdentifierFromIRIString(cssURLValue, builderState.document());
             // FIXME: It doesn't work with external SVG references (see https://bugs.webkit.org/show_bug.cgi?id=126133)
-            return ReferenceClipPathOperation::create(cssURLValue, fragment);
+            return ReferenceClipPathOperation::create(cssURLValue, fragment.toString());
         }
         ASSERT(primitiveValue.valueID() == CSSValueNone);
         return nullptr;
@@ -1434,12 +1434,11 @@ inline float BuilderConverter::convertOpacity(BuilderState&, const CSSValue& val
 
 inline String BuilderConverter::convertSVGURIReference(BuilderState& builderState, const CSSValue& value)
 {
-    String s;
     auto& primitiveValue = downcast<CSSPrimitiveValue>(value);
     if (primitiveValue.isURI())
-        s = primitiveValue.stringValue();
+        return SVGURIReference::fragmentIdentifierFromIRIString(primitiveValue.stringValue(), builderState.document()).toStringWithoutCopying();
 
-    return SVGURIReference::fragmentIdentifierFromIRIString(s, builderState.document());
+    return emptyString();
 }
 
 inline StyleSelfAlignmentData BuilderConverter::convertSelfOrDefaultAlignmentData(BuilderState&, const CSSValue& value)

@@ -25,7 +25,9 @@
 
 #include "GradientAttributes.h"
 #include "GraphicsContext.h"
+#include "RenderSVGShape.h"
 #include "RenderSVGText.h"
+#include "RenderView.h"
 #include "SVGRenderingContext.h"
 #include <wtf/IsoMallocInlines.h>
 
@@ -57,10 +59,8 @@ static inline bool createMaskAndSwapContextForTextGradient(GraphicsContext*& con
     auto* textRootBlock = RenderSVGText::locateRenderSVGTextAncestor(*object);
     ASSERT(textRootBlock);
 
-    AffineTransform absoluteTransform = SVGRenderingContext::calculateTransformationToOutermostCoordinateSystem(*textRootBlock);
-    FloatRect repaintRect = textRootBlock->repaintRectInLocalCoordinates();
-
-    auto maskImage = SVGRenderingContext::createImageBuffer(repaintRect, absoluteTransform, DestinationColorSpace::SRGB(), context->renderingMode());
+    auto absoluteTransform = context->getCTM(GraphicsContext::DefinitelyIncludeDeviceScale);
+    auto maskImage = SVGRenderingContext::createImageBuffer(textRootBlock->repaintBoundingBox(), absoluteTransform, DestinationColorSpace::SRGB(), context->renderingMode());
     if (!maskImage)
         return false;
 
@@ -77,15 +77,13 @@ static inline AffineTransform clipToTextMask(GraphicsContext& context, RefPtr<Im
     auto* textRootBlock = RenderSVGText::locateRenderSVGTextAncestor(*object);
     ASSERT(textRootBlock);
 
-    AffineTransform absoluteTransform = SVGRenderingContext::calculateTransformationToOutermostCoordinateSystem(*textRootBlock);
-
-    targetRect = textRootBlock->repaintRectInLocalCoordinates();
-
+    auto absoluteTransform = context.getCTM(GraphicsContext::DefinitelyIncludeDeviceScale);
+    targetRect = textRootBlock->repaintBoundingBox();
     SVGRenderingContext::clipToImageBuffer(context, absoluteTransform, targetRect, imageBuffer, false);
 
     AffineTransform matrix;
     if (boundingBoxMode) {
-        FloatRect maskBoundingBox = textRootBlock->objectBoundingBox();
+        auto maskBoundingBox = textRootBlock->objectBoundingBox();
         matrix.translate(maskBoundingBox.location());
         matrix.scale(maskBoundingBox.size());
     }
@@ -167,7 +165,11 @@ bool RenderSVGResourceGradient::applyResource(RenderElement& renderer, const Ren
     if (resourceMode.contains(RenderSVGResourceMode::ApplyToFill)) {
         context->setAlpha(svgStyle.fillOpacity());
         context->setFillGradient(*gradientData.gradient, userspaceTransform);
-        context->setFillRule(svgStyle.fillRule());
+
+        if (renderer.view().frameView().paintBehavior().contains(PaintBehavior::RenderingSVGClipOrMask))
+            context->setFillRule(SVGRenderSupport::clipRuleForRenderer(renderer));
+        else
+            context->setFillRule(svgStyle.fillRule());
     } else if (resourceMode.contains(RenderSVGResourceMode::ApplyToStroke)) {
         if (svgStyle.vectorEffect() == VectorEffect::NonScalingStroke)
             userspaceTransform = transformOnNonScalingStroke(&renderer, gradientData.userspaceTransform);

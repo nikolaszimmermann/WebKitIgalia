@@ -23,13 +23,12 @@
 
 #pragma once
 
-#include "AffineTransform.h"
-#include "FloatRect.h"
+#include "RenderImageResource.h"
 #include "RenderSVGModelObject.h"
+#include "SVGBoundingBoxComputation.h"
 
 namespace WebCore {
 
-class RenderImageResource;
 class SVGImageElement;
 
 class RenderSVGImage final : public RenderSVGModelObject {
@@ -40,16 +39,10 @@ public:
 
     SVGImageElement& imageElement() const;
 
-    bool updateImageViewport();
-    void setNeedsBoundariesUpdate() override { m_needsBoundariesUpdate = true; }
-    bool needsBoundariesUpdate() override { return m_needsBoundariesUpdate; }
-    void setNeedsTransformUpdate() override { m_needsTransformUpdate = true; }
-
     RenderImageResource& imageResource() { return *m_imageResource; }
     const RenderImageResource& imageResource() const { return *m_imageResource; }
 
-    // Note: Assumes the PaintInfo context has had all local transforms applied.
-    void paintForeground(PaintInfo&);
+    bool updateImageViewport();
 
 private:
     void willBeDestroyed() override;
@@ -60,32 +53,28 @@ private:
     bool isSVGImage() const override { return true; }
     bool canHaveChildren() const override { return false; }
 
-    const AffineTransform& localToParentTransform() const override { return m_localTransform; }
-
     FloatRect calculateObjectBoundingBox() const;
-    FloatRect objectBoundingBox() const override { return m_objectBoundingBox; }
-    FloatRect strokeBoundingBox() const override { return m_objectBoundingBox; }
-    FloatRect repaintRectInLocalCoordinates() const override { return m_repaintBoundingBox; }
-
-    void addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) override;
+    FloatRect objectBoundingBox() const final { return m_objectBoundingBox; }
+    FloatRect strokeBoundingBox() const final { return m_objectBoundingBox; }
+    FloatRect repaintBoundingBox() const final { return SVGBoundingBoxComputation::computeRepaintBoundingBox(*this); }
 
     void imageChanged(WrappedImagePtr, const IntRect* = nullptr) override;
 
     void layout() override;
     void paint(PaintInfo&, const LayoutPoint&) override;
 
-    void invalidateBufferedForeground();
+    void paintForeground(PaintInfo&, const LayoutPoint&);
+    ImageDrawResult paintIntoRect(PaintInfo&, const FloatRect&, const FloatRect&);
 
-    bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint& pointInParent, HitTestAction) override;
+    bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
 
-    AffineTransform localTransform() const override { return m_localTransform; }
-    void calculateImageViewport();
+    void repaintOrMarkForLayout(const IntRect* = nullptr);
+    void notifyFinished(CachedResource&, const NetworkLoadMetrics&) final;
+    bool bufferForeground(PaintInfo&, const LayoutPoint&);
 
-    bool m_needsBoundariesUpdate : 1;
-    bool m_needsTransformUpdate : 1;
-    AffineTransform m_localTransform;
+    CachedImage* cachedImage() const { return imageResource().cachedImage(); }
+
     FloatRect m_objectBoundingBox;
-    FloatRect m_repaintBoundingBox;
     std::unique_ptr<RenderImageResource> m_imageResource;
     RefPtr<ImageBuffer> m_bufferedForeground;
 };

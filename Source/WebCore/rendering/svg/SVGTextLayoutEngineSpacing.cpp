@@ -40,10 +40,8 @@ float SVGTextLayoutEngineSpacing::calculateCSSKerningAndSpacing(const SVGRenderS
     auto kerningLength = style->kerning();
     if (kerningLength.lengthType() == SVGLengthType::Percentage)
         kerning = kerningLength.valueAsPercentage() * m_font.pixelSize();
-    else {
-        SVGLengthContext lengthContext(contextElement);
-        kerning = kerningLength.value(lengthContext);
-    }
+    else
+        kerning = kerningLength.value(lengthContextFromElement(contextElement));
 
     const UChar* lastCharacter = m_lastCharacter;
     m_lastCharacter = currentCharacter;

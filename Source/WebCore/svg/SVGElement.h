@@ -23,6 +23,7 @@
 #pragma once
 
 #include "SVGAnimatedPropertyImpl.h"
+#include "SVGLengthContext.h"
 #include "SVGLocatable.h"
 #include "SVGNames.h"
 #include "SVGParsingError.h"
@@ -62,7 +63,6 @@ public:
     virtual bool needsPendingResourceHandling() const { return true; }
     bool instanceUpdatesBlocked() const;
     void setInstanceUpdatesBlocked(bool);
-    virtual AffineTransform localCoordinateSpaceTransform(SVGLocatable::CTMScope) const;
 
     virtual bool isSVGGraphicsElement() const { return false; }
     virtual bool isSVGGeometryElement() const { return false; }
@@ -153,6 +153,9 @@ public:
     String className() const { return m_className->currentValue(); }
     SVGAnimatedString& classNameAnimated() { return m_className; }
 
+    const SVGLengthContext& lengthContext() const { return m_lengthContext; }
+    void updateLengthContext() { m_lengthContext.updateViewport(); }
+
 protected:
     SVGElement(const QualifiedName&, Document&, ConstructionType = CreateSVGElement);
     virtual ~SVGElement();
@@ -180,6 +183,8 @@ protected:
     void updateRelativeLengthsInformation(bool hasRelativeLengths, SVGElement&);
 
     void willRecalcStyle(Style::Change) override;
+
+    SVGLengthContext m_lengthContext { *this };
 
 private:
     virtual void clearTarget() { }

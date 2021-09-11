@@ -170,6 +170,7 @@ public:
 
     bool hasBackground() const { return style().hasBackground(); }
     bool hasMask() const { return style().hasMask(); }
+    virtual bool hasSVGMask() const { return style().svgStyle().hasMasker(); }
     bool hasClip() const { return isOutOfFlowPositioned() && style().hasClip(); }
     bool hasClipOrNonVisibleOverflow() const { return hasClip() || hasNonVisibleOverflow(); }
     bool hasClipPath() const { return style().clipPath(); }
@@ -282,8 +283,6 @@ protected:
 
     RenderElement(Element&, RenderStyle&&, BaseTypeFlags);
     RenderElement(Document&, RenderStyle&&, BaseTypeFlags);
-
-    bool layerCreationAllowedForSubtree() const;
 
     enum StylePropagationType { PropagateToAllChildren, PropagateToBlockChildrenOnly };
     void propagateStyleToAnonymousChildren(StylePropagationType);
@@ -472,7 +471,7 @@ inline bool RenderElement::canContainAbsolutelyPositionedObjects() const
 
 inline bool RenderElement::createsGroupForStyle(const RenderStyle& style)
 {
-    return style.hasOpacity() || style.hasMask() || style.clipPath() || style.hasFilter() || style.hasBackdropFilter() || style.hasBlendMode();
+    return style.hasOpacity() || style.hasMask() || style.svgStyle().hasMasker() || style.clipPath() || style.hasFilter() || style.hasBackdropFilter() || style.hasBlendMode();
 }
 
 inline bool RenderObject::isRenderLayerModelObject() const

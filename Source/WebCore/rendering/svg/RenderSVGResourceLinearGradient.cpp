@@ -43,12 +43,12 @@ bool RenderSVGResourceLinearGradient::collectGradientAttributes()
 
 FloatPoint RenderSVGResourceLinearGradient::startPoint(const LinearGradientAttributes& attributes) const
 {
-    return SVGLengthContext::resolvePoint(&linearGradientElement(), attributes.gradientUnits(), attributes.x1(), attributes.y1());
+    return SVGLengthContext::resolvePoint(linearGradientElement(), attributes.gradientUnits(), attributes.x1(), attributes.y1());
 }
 
 FloatPoint RenderSVGResourceLinearGradient::endPoint(const LinearGradientAttributes& attributes) const
 {
-    return SVGLengthContext::resolvePoint(&linearGradientElement(), attributes.gradientUnits(), attributes.x2(), attributes.y2());
+    return SVGLengthContext::resolvePoint(linearGradientElement(), attributes.gradientUnits(), attributes.x2(), attributes.y2());
 }
 
 Ref<Gradient> RenderSVGResourceLinearGradient::buildGradient(const RenderStyle& style) const

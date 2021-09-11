@@ -57,6 +57,7 @@
 #include "RenderLayerBacking.h"
 #include "RenderLayerScrollableArea.h"
 #include "RenderReplica.h"
+#include "RenderSVGModelObject.h"
 #include "RenderVideo.h"
 #include "RenderView.h"
 #include "RuntimeEnabledFeatures.h"
@@ -1635,6 +1636,7 @@ static bool styleAffectsLayerGeometry(const RenderStyle& style)
 
 static bool recompositeChangeRequiresGeometryUpdate(const RenderStyle& oldStyle, const RenderStyle& newStyle)
 {
+    // FIXME(SVG-Compositing): NEED TO BE ABLE TO FIND SUPPLEMENTAL TRANSFORM CHANGES FOR RenderSVGRoot!
     return oldStyle.transform() != newStyle.transform()
         || oldStyle.translate() != newStyle.translate()
         || oldStyle.scale() != newStyle.scale()
@@ -3118,7 +3120,7 @@ bool RenderLayerCompositor::requiresCompositingForWillChange(RenderLayerModelObj
         return false;
 #endif
 
-    if (is<RenderBox>(renderer))
+    if (is<RenderBox>(renderer) || is<RenderSVGModelObject>(renderer))
         return true;
 
     return renderer.style().willChange()->canTriggerCompositingOnInline();

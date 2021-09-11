@@ -33,6 +33,7 @@ namespace WebCore {
 TransformState& TransformState::operator=(const TransformState& other)
 {
     m_accumulatedOffset = other.m_accumulatedOffset;
+    m_tracking = other.m_tracking;
     m_mapPoint = other.m_mapPoint;
     m_mapQuad = other.m_mapQuad;
     if (m_mapPoint)
@@ -49,6 +50,10 @@ TransformState& TransformState::operator=(const TransformState& other)
     if (other.m_accumulatedTransform)
         m_accumulatedTransform = makeUnique<TransformationMatrix>(*other.m_accumulatedTransform);
         
+    m_trackedTransform = nullptr;
+    if (other.m_trackedTransform)
+        m_trackedTransform = makeUnique<TransformationMatrix>(*other.m_trackedTransform);
+
     return *this;
 }
 
@@ -70,11 +75,19 @@ void TransformState::translateMappedCoordinates(const LayoutSize& offset)
         if (m_lastPlanarSecondaryQuad)
             m_lastPlanarSecondaryQuad->move(adjustedOffset);
     }
+    if (m_tracking != DoNotTrackTransformMatrix) {
+        if (!m_trackedTransform)
+            m_trackedTransform = makeUnique<TransformationMatrix>();
+        if (m_direction == ApplyTransformDirection)
+            m_trackedTransform->translateRight(offset.width(), offset.height());
+        else
+            m_trackedTransform->translate(offset.width(), offset.height());
+    }
 }
 
 void TransformState::move(const LayoutSize& offset, TransformAccumulation accumulate)
 {
-    if (accumulate == FlattenTransform && !m_accumulatedTransform)
+    if (accumulate == FlattenTransform && !m_accumulatedTransform && m_tracking == DoNotTrackTransformMatrix)
         m_accumulatedOffset += offset;
     else {
         applyAccumulatedOffset();
@@ -232,6 +245,12 @@ void TransformState::flattenWithTransform(const TransformationMatrix& t, bool* w
             if (m_lastPlanarSecondaryQuad)
                 m_lastPlanarSecondaryQuad = t.mapQuad(*m_lastPlanarSecondaryQuad);
         }
+        if (m_tracking != DoNotTrackTransformMatrix) {
+            if (!m_trackedTransform)
+                m_trackedTransform = makeUnique<TransformationMatrix>(t);
+            else
+                m_trackedTransform = makeUnique<TransformationMatrix>(t * *m_trackedTransform);
+        }
     } else {
         TransformationMatrix inverseTransform = t.inverse().value_or(TransformationMatrix());
         if (m_mapPoint)
@@ -240,6 +259,12 @@ void TransformState::flattenWithTransform(const TransformationMatrix& t, bool* w
             m_lastPlanarQuad = inverseTransform.projectQuad(m_lastPlanarQuad, wasClamped);
             if (m_lastPlanarSecondaryQuad)
                 m_lastPlanarSecondaryQuad = inverseTransform.projectQuad(*m_lastPlanarSecondaryQuad, wasClamped);
+        }
+        if (m_tracking != DoNotTrackTransformMatrix) {
+            if (!m_trackedTransform)
+                m_trackedTransform = makeUnique<TransformationMatrix>(t);
+            else
+                m_trackedTransform->multiply(t);
         }
     }
 

@@ -47,6 +47,7 @@
 #include "RenderMultiColumnSet.h"
 #include "RenderMultiColumnSpannerPlaceholder.h"
 #include "RenderQuote.h"
+#include "RenderSVGRoot.h"
 #include "RenderTreeBuilder.h"
 #include "RenderWidget.h"
 #include "Settings.h"
@@ -393,10 +394,13 @@ void RenderView::paintBoxDecorations(PaintInfo& paintInfo, const LayoutPoint&)
     bool rootObscuresBackground = false;
     Element* documentElement = document().documentElement();
     if (RenderElement* rootRenderer = documentElement ? documentElement->renderer() : nullptr) {
-        // The document element's renderer is currently forced to be a block, but may not always be.
-        RenderBox* rootBox = is<RenderBox>(*rootRenderer) ? downcast<RenderBox>(rootRenderer) : nullptr;
-        rootFillsViewport = rootBox && !rootBox->x() && !rootBox->y() && rootBox->width() >= width() && rootBox->height() >= height();
-        rootObscuresBackground = rendererObscuresBackground(*rootRenderer);
+        // As transformations are ignored in the "rootFillsViewport" calculation, this cannot work for SVG renderers definining a viewBox.
+        if (!is<RenderSVGRoot>(rootRenderer)) {
+            // The document element's renderer is currently forced to be a block, but may not always be.
+            RenderBox* rootBox = is<RenderBox>(*rootRenderer) ? downcast<RenderBox>(rootRenderer) : nullptr;
+            rootFillsViewport = rootBox && !rootBox->x() && !rootBox->y() && rootBox->width() >= width() && rootBox->height() >= height();
+            rootObscuresBackground = rendererObscuresBackground(*rootRenderer);
+        }
     }
 
     compositor().rootBackgroundColorOrTransparencyChanged();
@@ -487,6 +491,66 @@ void RenderView::repaintViewRectangle(const LayoutRect& repaintRect) const
         return;
     }
     m_accumulatedRepaintRegion->unite(enclosingRect);
+
+    // Region will get slow if it gets too complex. Merge all rects so far to bounds if this happens.
+    // FIXME: Maybe there should be a region type that does this automatically.
+    static const unsigned maximumRepaintRegionGridSize = 16 * 16;
+    if (m_accumulatedRepaintRegion->gridSize() > maximumRepaintRegionGridSize)
+        m_accumulatedRepaintRegion = makeUnique<Region>(m_accumulatedRepaintRegion->bounds());
+}
+
+void RenderView::repaintViewRectangles(const LayoutRect& oldRepaintRect, const LayoutRect& newRepaintRect) const
+{
+    if (printing())
+        return;
+
+    ASSERT(!oldRepaintRect.isEmpty());
+    ASSERT(!newRepaintRect.isEmpty());
+
+    // FIXME: enclosingOld/NewRepaintRect is needed as long as we integral snap ScrollView/FrameView/RenderWidget size/position.
+    IntRect enclosingOldRepaintRect = enclosingIntRect(oldRepaintRect);
+    IntRect enclosingNewRepaintRect = enclosingIntRect(newRepaintRect);
+    if (auto ownerElement = document().ownerElement()) {
+        RenderBox* ownerBox = ownerElement->renderBox();
+        if (!ownerBox)
+            return;
+        LayoutRect viewRect = this->viewRect();
+#if PLATFORM(IOS_FAMILY)
+        // Don't clip using the visible rect since clipping is handled at a higher level on iPhone.
+        LayoutRect adjustedOldRepaintRect = enclosingOldRepaintRect;
+        LayoutRect adjustedNewRepaintRect = enclosingNewRepaintRect;
+#else
+        LayoutRect adjustedOldRepaintRect = intersection(enclosingOldRepaintRect, viewRect);
+        LayoutRect adjustedNewRepaintRect = intersection(enclosingNewRepaintRect, viewRect);
+#endif
+        auto contentBoxRect = ownerBox->contentBoxRect();
+        adjustedOldRepaintRect.move(contentBoxRect.x() - viewRect.x(), contentBoxRect.y() - viewRect.y());
+        adjustedNewRepaintRect.move(contentBoxRect.x() - viewRect.x(), contentBoxRect.y() - viewRect.y());
+
+        // A dirty rect in an iframe is relative to the contents of that iframe.
+        // When we traverse between parent frames and child frames, we need to make sure
+        // that the coordinate system is mapped appropriately between the iframe's contents
+        // and the Renderer that contains the iframe. This transformation must account for a
+        // left scrollbar (if one exists).
+        FrameView& frameView = this->frameView();
+        if (frameView.shouldPlaceVerticalScrollbarOnLeft() && frameView.verticalScrollbar()) {
+            adjustedOldRepaintRect.move(LayoutSize(frameView.verticalScrollbar()->occupiedWidth(), 0));
+            adjustedNewRepaintRect.move(LayoutSize(frameView.verticalScrollbar()->occupiedWidth(), 0));
+        }
+
+        ownerBox->repaintRectangles(adjustedOldRepaintRect, adjustedNewRepaintRect);
+        return;
+    }
+
+    frameView().addTrackedRepaintRect(snapRectToDevicePixels(oldRepaintRect, document().deviceScaleFactor()));
+    frameView().addTrackedRepaintRect(snapRectToDevicePixels(newRepaintRect, document().deviceScaleFactor()));
+    if (!m_accumulatedRepaintRegion) {
+        frameView().repaintContentRectangle(enclosingOldRepaintRect);
+        frameView().repaintContentRectangle(enclosingNewRepaintRect);
+        return;
+    }
+    m_accumulatedRepaintRegion->unite(enclosingOldRepaintRect);
+    m_accumulatedRepaintRegion->unite(enclosingNewRepaintRect);
 
     // Region will get slow if it gets too complex. Merge all rects so far to bounds if this happens.
     // FIXME: Maybe there should be a region type that does this automatically.

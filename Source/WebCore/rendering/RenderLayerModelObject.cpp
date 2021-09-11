@@ -25,9 +25,10 @@
 #include "config.h"
 #include "RenderLayerModelObject.h"
 
-#include "RenderLayer.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
+#include "RenderLayerHTML.h"
+#include "RenderLayerSVG.h"
 #include "RenderLayerScrollableArea.h"
 #include "RenderView.h"
 #include "Settings.h"
@@ -83,7 +84,10 @@ void RenderLayerModelObject::destroyLayer()
 void RenderLayerModelObject::createLayer()
 {
     ASSERT(!m_layer);
-    m_layer = makeUnique<RenderLayer>(*this);
+    if (isSVGLayerAwareRenderer() && !isSVGForeignObject() && !isSVGRoot()) // SVG outermost <svg> + <fO> create full-fledged RenderLayerHTML.
+        m_layer = makeUnique<RenderLayerSVG>(*this);
+    else
+        m_layer = makeUnique<RenderLayerHTML>(*this);
     setHasLayer(true);
     m_layer->insertOnlyThisLayer(RenderLayer::LayerChangeTiming::StyleChange);
 }
@@ -91,6 +95,11 @@ void RenderLayerModelObject::createLayer()
 bool RenderLayerModelObject::hasSelfPaintingLayer() const
 {
     return m_layer && m_layer->isSelfPaintingLayer();
+}
+
+void RenderLayerModelObject::applyTransform(TransformationMatrix& transform, const RenderStyle& style, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption> options) const
+{
+    style.applyTransform(transform, boundingBox, options);
 }
 
 void RenderLayerModelObject::styleWillChange(StyleDifference diff, const RenderStyle& newStyle)
@@ -107,13 +116,22 @@ void RenderLayerModelObject::styleWillChange(StyleDifference diff, const RenderS
     RenderElement::styleWillChange(diff, newStyle);
 }
 
+void RenderLayerModelObject::svgAnimatedLocalTransformChanged()
+{
+    ASSERT(isSVGLayerAwareRenderer());
+    updateFromStyle();
+
+    if (layer())
+        layer()->updateTransform();
+}
+
 void RenderLayerModelObject::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
     RenderElement::styleDidChange(diff, oldStyle);
     updateFromStyle();
 
     if (requiresLayer()) {
-        if (!layer() && layerCreationAllowedForSubtree()) {
+        if (!layer()) {
             if (s_wasFloating && isFloating())
                 setChildNeedsLayout();
             createLayer();

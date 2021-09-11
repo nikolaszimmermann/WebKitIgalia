@@ -36,7 +36,7 @@ public:
 
     void parseAttribute(const QualifiedName&, const AtomString&);
 
-    static String fragmentIdentifierFromIRIString(const String&, const Document&);
+    static StringView fragmentIdentifierFromIRIString(const String&, const Document&);
 
     struct TargetElementResult {
         RefPtr<Element> element;

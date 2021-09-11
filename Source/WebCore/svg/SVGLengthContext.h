@@ -24,6 +24,7 @@
 #include "FloatRect.h"
 #include "SVGLengthValue.h"
 #include "SVGUnitTypes.h"
+#include <wtf/CompactPointerTuple.h>
 
 namespace WebCore {
 
@@ -33,26 +34,38 @@ struct Length;
 
 class SVGLengthContext {
 public:
-    explicit SVGLengthContext(const SVGElement*);
-
     template<typename T>
-    static FloatRect resolveRectangle(const T* context, SVGUnitTypes::SVGUnitType type, const FloatRect& viewport)
+    static FloatRect resolveRectangle(const T& context, SVGUnitTypes::SVGUnitType type, const FloatRect& viewport)
     {
-        return SVGLengthContext::resolveRectangle(context, type, viewport, context->x(), context->y(), context->width(), context->height());
+        return SVGLengthContext::resolveRectangle(context, type, viewport, context.x(), context.y(), context.width(), context.height());
     }
 
-    static FloatRect resolveRectangle(const SVGElement*, SVGUnitTypes::SVGUnitType, const FloatRect& viewport, const SVGLengthValue& x, const SVGLengthValue& y, const SVGLengthValue& width, const SVGLengthValue& height);
-    static FloatPoint resolvePoint(const SVGElement*, SVGUnitTypes::SVGUnitType, const SVGLengthValue& x, const SVGLengthValue& y);
-    static float resolveLength(const SVGElement*, SVGUnitTypes::SVGUnitType, const SVGLengthValue&);
+    static FloatRect resolveRectangle(const SVGElement&, SVGUnitTypes::SVGUnitType, const FloatRect& viewport, const SVGLengthValue& x, const SVGLengthValue& y, const SVGLengthValue& width, const SVGLengthValue& height);
+    static FloatPoint resolvePoint(const SVGElement&, SVGUnitTypes::SVGUnitType, const SVGLengthValue& x, const SVGLengthValue& y);
+    static float resolveLength(const SVGElement&, SVGUnitTypes::SVGUnitType, const SVGLengthValue&);
 
-    float valueForLength(const Length&, SVGLengthMode = SVGLengthMode::Other);
+    float valueForLength(const Length&, SVGLengthMode = SVGLengthMode::Other) const;
     ExceptionOr<float> convertValueToUserUnits(float, SVGLengthType, SVGLengthMode) const;
     ExceptionOr<float> convertValueFromUserUnits(float, SVGLengthType, SVGLengthMode) const;
 
-    bool determineViewport(FloatSize&) const;
+    void updateViewport();
+    FloatSize viewportSize() const { return m_viewportSize.value_or(FloatSize()); }
 
 private:
-    SVGLengthContext(const SVGElement*, const FloatRect& viewport);
+    friend class SVGElement;
+    friend NeverDestroyed<SVGLengthContext>;
+
+    enum ContextMode : uint8_t {
+        ResolveAgainstDefaultViewport,
+        ResolveAgainstOverridenViewport
+    };
+
+    using ContextModeAndElement = CompactPointerTuple<const SVGElement*, ContextMode>;
+    const SVGElement* contextElement() const { return m_contextModeAndElement.pointer(); }
+
+    SVGLengthContext() = default;
+    SVGLengthContext(const SVGElement&);
+    SVGLengthContext(const SVGElement&, const FloatRect& viewport);
 
     ExceptionOr<float> convertValueFromUserUnitsToPercentage(float value, SVGLengthMode) const;
     ExceptionOr<float> convertValueFromPercentageToUserUnits(float value, SVGLengthMode) const;
@@ -63,8 +76,11 @@ private:
     ExceptionOr<float> convertValueFromUserUnitsToEXS(float value) const;
     ExceptionOr<float> convertValueFromEXSToUserUnits(float value) const;
 
-    const SVGElement* m_context;
-    FloatRect m_overriddenViewport;
+    ContextModeAndElement m_contextModeAndElement { nullptr, ResolveAgainstDefaultViewport };
+    std::optional<FloatSize> m_viewportSize;
 };
+
+const SVGLengthContext& lengthContextFromElement(const SVGElement*);
+const SVGLengthContext& emptyLengthContext();
 
 } // namespace WebCore

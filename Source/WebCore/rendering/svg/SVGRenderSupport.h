@@ -37,6 +37,7 @@ class RenderElement;
 class RenderGeometryMap;
 class RenderLayerModelObject;
 class RenderStyle;
+class RenderSVGResourceClipper;
 class RenderSVGRoot;
 class SVGElement;
 class TransformState;
@@ -44,41 +45,19 @@ class TransformState;
 // SVGRendererSupport is a helper class sharing code between all SVG renderers.
 class SVGRenderSupport {
 public:
-    static void layoutDifferentRootIfNeeded(const RenderElement&);
-
-    // Shares child layouting code between RenderSVGRoot/RenderSVG(Hidden)Container
-    static void layoutChildren(RenderElement&, bool selfNeedsLayout);
-
     // Helper function determining wheter overflow is hidden
     static bool isOverflowHidden(const RenderElement&);
-
-    // Calculates the repaintRect in combination with filter, clipper and masker in local coordinates.
-    static void intersectRepaintRectWithResources(const RenderElement&, FloatRect&);
 
     // Determines whether a container needs to be laid out because it's filtered and a child is being laid out.
     static bool filtersForceContainerLayout(const RenderElement&);
 
     // Determines whether the passed point lies in a clipping area
-    static bool pointInClippingArea(const RenderElement&, const FloatPoint&);
+    static bool pointInClippingArea(const RenderLayerModelObject&, const LayoutPoint&);
 
-    static void computeContainerBoundingBoxes(const RenderElement& container, FloatRect& objectBoundingBox, bool& objectBoundingBoxValid, FloatRect& strokeBoundingBox, FloatRect& repaintBoundingBox);
-    static bool paintInfoIntersectsRepaintRect(const FloatRect& localRepaintRect, const AffineTransform& localTransform, const PaintInfo&);
-
-    // Important functions used by nearly all SVG renderers centralizing coordinate transformations / repaint rect calculations
-    static LayoutRect clippedOverflowRectForRepaint(const RenderElement&, const RenderLayerModelObject* container);
-    static std::optional<FloatRect> computeFloatVisibleRectInContainer(const RenderElement&, const FloatRect&, const RenderLayerModelObject* container, RenderObject::VisibleRectContext);
-    static const RenderElement& localToParentTransform(const RenderElement&, AffineTransform &);
-    static void mapLocalToContainer(const RenderElement&, const RenderLayerModelObject* ancestorContainer, TransformState&, bool* wasFixed);
-    static const RenderElement* pushMappingToContainer(const RenderElement&, const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&);
-    static bool checkForSVGRepaintDuringLayout(const RenderElement&);
+    static void mapLocalToContainer(const RenderElement& container, const RenderLayerModelObject* ancestorContainer, TransformState&, OptionSet<MapCoordinatesMode>, bool* wasFixed);
 
     // Shared between SVG renderers and resources.
     static void applyStrokeStyleToContext(GraphicsContext&, const RenderStyle&, const RenderElement&);
-
-    // Determines if any ancestor's transform has changed.
-    static bool transformToRootChanged(RenderElement*);
-
-    static void clipContextToCSSClippingArea(GraphicsContext&, const RenderElement& renderer);
 
     static void styleChanged(RenderElement&, const RenderStyle*);
     
@@ -91,6 +70,21 @@ public:
 
     static RenderSVGRoot* findTreeRootObject(RenderElement&);
     static const RenderSVGRoot* findTreeRootObject(const RenderElement&);
+
+    static bool shouldPaintHiddenRenderer(const RenderLayerModelObject&);
+
+    static WindRule clipRuleForRenderer(const RenderElement&);
+    static void paintSVGClippingMask(const RenderLayerModelObject&, PaintInfo&, RenderSVGResourceClipper*, const FloatRect& objectBoundingBox);
+    static void paintSVGClippingMask(const RenderLayerModelObject&, PaintInfo&);
+
+    static void paintSVGMask(const RenderLayerModelObject&, PaintInfo&, const LayoutPoint& adjustedPaintOffset);
+
+    static void updateLayerTransform(const RenderLayerModelObject&);
+    static bool isRenderingDisabledDueToEmptySVGViewBox(const RenderLayerModelObject&);
+
+    static std::optional<LayoutRect> computeVisibleRectInContainer(const RenderElement&, const LayoutRect&, const RenderLayerModelObject* container, RenderObject::VisibleRectContext);
+
+    static void applyTransform(const RenderElement&, TransformationMatrix&, const RenderStyle&, const FloatRect& boundingBox, const std::optional<AffineTransform>& preApplySVGTransformMatrix, const std::optional<AffineTransform>& postApplySVGTransformMatrix, OptionSet<RenderStyle::TransformOperationOption>);
 
 private:
     // This class is not constructable.
@@ -109,6 +103,17 @@ public:
 private:
     static WeakHashSet<RenderElement>& visitedElements();
     WeakPtr<RenderElement> m_element;
+};
+
+class SVGLayerTransformUpdater {
+    WTF_MAKE_NONCOPYABLE(SVGLayerTransformUpdater);
+public:
+    SVGLayerTransformUpdater(RenderLayerModelObject&);
+    ~SVGLayerTransformUpdater();
+
+private:
+    RenderLayerModelObject& m_renderer;
+    FloatRect m_transformReferenceBox;
 };
 
 } // namespace WebCore

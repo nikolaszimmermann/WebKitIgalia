@@ -30,6 +30,7 @@
 #include "EventNames.h"
 #include "Frame.h"
 #include "FrameSelection.h"
+#include "RenderLayerCompositor.h"
 #include "RenderSVGResource.h"
 #include "RenderSVGRoot.h"
 #include "RenderSVGViewportContainer.h"
@@ -47,6 +48,7 @@
 #include "SVGViewElement.h"
 #include "SVGViewSpec.h"
 #include "StaticNodeList.h"
+#include "StyleResolver.h"
 #include <wtf/IsoMallocInlines.h>
 
 namespace WebCore {
@@ -131,15 +133,9 @@ void SVGSVGElement::setCurrentTranslate(const FloatPoint& translation)
     if (m_currentTranslate->value() == translation)
         return;
     m_currentTranslate->setValue(translation);
-    updateCurrentTranslate();
-}
-
-void SVGSVGElement::updateCurrentTranslate()
-{
-    if (RenderObject* object = renderer())
-        object->setNeedsLayout();
-    if (parentNode() == &document() && document().renderView())
-        document().renderView()->repaint();
+    if (auto* renderer = this->renderer())
+        RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
+    invalidateStyleAndLayerComposition();
 }
 
 void SVGSVGElement::parseAttribute(const QualifiedName& name, const AtomString& value)
@@ -218,10 +214,8 @@ void SVGSVGElement::svgAttributeChanged(const QualifiedName& attrName)
     }
 
     if (SVGFitToViewBox::isKnownAttribute(attrName)) {
-        if (auto* renderer = this->renderer()) {
-            renderer->setNeedsTransformUpdate();
+        if (auto* renderer = this->renderer())
             RenderSVGResource::markForLayoutAndParentResourceInvalidation(*renderer);
-        }
         return;
     }
 
@@ -329,53 +323,6 @@ Ref<SVGTransform> SVGSVGElement::createSVGTransformFromMatrix(DOMMatrix2DInit&& 
     if (matrixInit.f)
         transform.setF(*matrixInit.f);
     return SVGTransform::create(transform);
-}
-
-AffineTransform SVGSVGElement::localCoordinateSpaceTransform(SVGLocatable::CTMScope mode) const
-{
-    AffineTransform viewBoxTransform;
-    if (!hasEmptyViewBox()) {
-        FloatSize size = currentViewportSize();
-        viewBoxTransform = viewBoxToViewTransform(size.width(), size.height());
-    }
-
-    AffineTransform transform;
-    if (!isOutermostSVGSVGElement()) {
-        SVGLengthContext lengthContext(this);
-        transform.translate(x().value(lengthContext), y().value(lengthContext));
-    } else if (mode == SVGLocatable::ScreenScope) {
-        if (auto* renderer = this->renderer()) {
-            FloatPoint location;
-            float zoomFactor = 1;
-
-            // At the SVG/HTML boundary (aka RenderSVGRoot), we apply the localToBorderBoxTransform 
-            // to map an element from SVG viewport coordinates to CSS box coordinates.
-            // RenderSVGRoot's localToAbsolute method expects CSS box coordinates.
-            // We also need to adjust for the zoom level factored into CSS coordinates (bug #96361).
-            if (is<RenderSVGRoot>(*renderer)) {
-                location = downcast<RenderSVGRoot>(*renderer).localToBorderBoxTransform().mapPoint(location);
-                zoomFactor = 1 / renderer->style().effectiveZoom();
-            }
-
-            // Translate in our CSS parent coordinate space
-            // FIXME: This doesn't work correctly with CSS transforms.
-            location = renderer->localToAbsolute(location, UseTransforms);
-            location.scale(zoomFactor);
-
-            // Be careful here! localToBorderBoxTransform() included the x/y offset coming from the viewBoxToViewTransform(),
-            // so we have to subtract it here (original cause of bug #27183)
-            transform.translate(location.x() - viewBoxTransform.e(), location.y() - viewBoxTransform.f());
-
-            // Respect scroll offset.
-            if (RefPtr view = document().view()) {
-                LayoutPoint scrollPosition = view->scrollPosition();
-                scrollPosition.scale(zoomFactor);
-                transform.translate(-scrollPosition);
-            }
-        }
-    }
-
-    return transform.multiply(viewBoxTransform);
 }
 
 bool SVGSVGElement::rendererIsNeeded(const RenderStyle& style)
@@ -495,11 +442,10 @@ FloatSize SVGSVGElement::currentViewportSize() const
     FloatSize viewportSize;
 
     if (renderer()) {
-        if (is<RenderSVGRoot>(*renderer())) {
-            auto& root = downcast<RenderSVGRoot>(*renderer());
-            viewportSize = root.contentBoxRect().size() / root.style().effectiveZoom();
-        } else
-            viewportSize = downcast<RenderSVGViewportContainer>(*renderer()).viewport().size();
+        if (is<RenderSVGRoot>(*renderer()))
+            viewportSize = downcast<RenderSVGRoot>(*renderer()).currentViewportSize();
+        else
+            viewportSize = downcast<RenderSVGViewportContainer>(*renderer()).currentViewportSize();
     }
 
     if (!viewportSize.isEmpty())
@@ -526,8 +472,7 @@ Length SVGSVGElement::intrinsicWidth() const
     if (width().lengthType() == SVGLengthType::Percentage)
         return Length(0, LengthType::Fixed);
 
-    SVGLengthContext lengthContext(this);
-    return Length(width().value(lengthContext), LengthType::Fixed);
+    return Length(width().value(m_lengthContext), LengthType::Fixed);
 }
 
 Length SVGSVGElement::intrinsicHeight() const
@@ -535,8 +480,7 @@ Length SVGSVGElement::intrinsicHeight() const
     if (height().lengthType() == SVGLengthType::Percentage)
         return Length(0, LengthType::Fixed);
 
-    SVGLengthContext lengthContext(this);
-    return Length(height().value(lengthContext), LengthType::Fixed);
+    return Length(height().value(m_lengthContext), LengthType::Fixed);
 }
 
 AffineTransform SVGSVGElement::viewBoxToViewTransform(float viewWidth, float viewHeight) const

@@ -156,7 +156,7 @@ static bool canMapBetweenRenderersViaLayers(const RenderLayerModelObject& render
         if (current->isRenderFragmentedFlow())
             return false;
 
-        if (current->isSVGRoot())
+        if (current->hasSVGTransform())
             return false;
 
         if (current == &ancestor)

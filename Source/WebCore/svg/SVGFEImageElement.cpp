@@ -161,13 +161,12 @@ void SVGFEImageElement::notifyFinished(CachedResource&, const NetworkLoadMetrics
 {
     if (!isConnected())
         return;
-
     RefPtr parent = parentElement();
 
     if (!parent || !parent->hasTagName(SVGNames::filterTag))
         return;
 
-    RenderElement* parentRenderer = parent->renderer();
+    auto* parentRenderer = parent->renderer();
     if (!parentRenderer)
         return;
 

@@ -38,65 +38,14 @@ class RenderSVGResourceFilter;
 // SVGRenderingContext 
 class SVGRenderingContext {
 public:
-    enum NeedsGraphicsContextSave {
-        SaveGraphicsContext,
-        DontSaveGraphicsContext,
-    };
-
-    // Does not start rendering.
-    SVGRenderingContext()
-    {
-    }
-
-    SVGRenderingContext(RenderElement& object, PaintInfo& paintinfo, NeedsGraphicsContextSave needsGraphicsContextSave = DontSaveGraphicsContext)
-    {
-        prepareToRenderSVGContent(object, paintinfo, needsGraphicsContextSave);
-    }
-
-    // Automatically finishes context rendering.
-    ~SVGRenderingContext();
-
-    // Used by all SVG renderers who apply clip/filter/etc. resources to the renderer content.
-    void prepareToRenderSVGContent(RenderElement&, PaintInfo&, NeedsGraphicsContextSave = DontSaveGraphicsContext);
-    bool isRenderingPrepared() const { return m_renderingFlags & RenderingPrepared; }
-
     static RefPtr<ImageBuffer> createImageBuffer(const FloatRect& targetRect, const AffineTransform& absoluteTransform, const DestinationColorSpace&, RenderingMode, const GraphicsContext* = nullptr);
     static RefPtr<ImageBuffer> createImageBuffer(const FloatRect& targetRect, const FloatRect& clampedRect, const DestinationColorSpace&, RenderingMode, const GraphicsContext* = nullptr);
 
-    static void renderSubtreeToContext(GraphicsContext&, RenderElement&, const AffineTransform&);
     static void clipToImageBuffer(GraphicsContext&, const AffineTransform& absoluteTransform, const FloatRect& targetRect, RefPtr<ImageBuffer>&, bool safeToClear);
 
     static float calculateScreenFontSizeScalingFactor(const RenderObject&);
-    static AffineTransform calculateTransformationToOutermostCoordinateSystem(const RenderObject&);
+    static AffineTransform calculateAbsoluteTransformForRenderer(const RenderObject& renderer, const RenderLayerModelObject* stopAtRenderer, bool includeDeviceScaleFactor = true);
     static void clear2DRotation(AffineTransform&);
-
-    static IntRect calculateImageBufferRect(const FloatRect& targetRect, const AffineTransform& absoluteTransform)
-    {
-        return enclosingIntRect(absoluteTransform.mapRect(targetRect));
-    }
-
-    // Support for the buffered-rendering hint.
-    bool bufferForeground(RefPtr<ImageBuffer>&);
-
-private:
-    // To properly revert partially successful initializtions in the destructor, we record all successful steps.
-    enum RenderingFlags {
-        RenderingPrepared = 1,
-        RestoreGraphicsContext = 1 << 1,
-        EndOpacityLayer = 1 << 2,
-        EndFilterLayer = 1 << 3,
-        PrepareToRenderSVGContentWasCalled = 1 << 4
-    };
-
-    // List of those flags which require actions during the destructor.
-    static constexpr int ActionsNeeded = RestoreGraphicsContext | EndOpacityLayer | EndFilterLayer;
-
-    RenderElement* m_renderer { nullptr };
-    PaintInfo* m_paintInfo { nullptr };
-    GraphicsContext* m_savedContext  { nullptr };
-    RenderSVGResourceFilter* m_filter  { nullptr };
-    LayoutRect m_savedPaintRect;
-    int m_renderingFlags { 0 };
 };
 
 } // namespace WebCore

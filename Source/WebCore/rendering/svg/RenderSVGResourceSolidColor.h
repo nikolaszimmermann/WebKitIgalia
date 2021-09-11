@@ -20,6 +20,7 @@
 #pragma once
 
 #include "Color.h"
+#include "FloatRect.h"
 #include "RenderSVGResource.h"
 
 namespace WebCore {

@@ -48,6 +48,7 @@ public:
     void setFilterScale(float scale) { m_filterScale = scale; }
 
     const AffineTransform& absoluteTransform() const { return m_absoluteTransform; }
+    void setAbsoluteTransform(const AffineTransform& absoluteTransform) { m_absoluteTransform = absoluteTransform; }
 
     RenderingMode renderingMode() const { return m_renderingMode; }
     void setRenderingMode(RenderingMode renderingMode) { m_renderingMode = renderingMode; }

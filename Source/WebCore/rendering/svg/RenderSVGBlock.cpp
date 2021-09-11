@@ -22,8 +22,11 @@
 #include "config.h"
 #include "RenderSVGBlock.h"
 
+#include "RenderLayer.h"
 #include "RenderSVGResource.h"
+#include "RenderView.h"
 #include "SVGGraphicsElement.h"
+#include "SVGRenderSupport.h"
 #include "SVGResourcesCache.h"
 #include "StyleInheritedData.h"
 #include <wtf/IsoMallocInlines.h>
@@ -41,25 +44,9 @@ void RenderSVGBlock::updateFromStyle()
 {
     RenderBlockFlow::updateFromStyle();
 
-    // RenderSVGlock, used by Render(SVGText|ForeignObject), is not allowed to call setHasNonVisibleOverflow(true).
-    // RenderBlock assumes a layer to be present when the overflow clip functionality is requested. Both
-    // Render(SVGText|ForeignObject) return 'false' on 'requiresLayer'. Fine for RenderSVGText.
-    //
-    // If we want to support overflow rules for <foreignObject> we can choose between two solutions:
-    // a) make RenderSVGForeignObject require layers and SVG layer aware
-    // b) refactor overflow logic out of RenderLayer (as suggested by dhyatt), which is a large task
-    //
-    // Until this is resolved, disable overflow support. Opera/FF don't support it as well at the moment (Feb 2010).
-    //
-    // Note: This does NOT affect overflow handling on outer/inner <svg> elements - this is handled
-    // manually by RenderSVGRoot - which owns the documents enclosing root layer and thus works fine.
-    setHasNonVisibleOverflow(false);
-}
-
-void RenderSVGBlock::absoluteRects(Vector<IntRect>&, const LayoutPoint&) const
-{
-    // This code path should never be taken for SVG, as we're assuming useTransforms=true everywhere, absoluteQuads should be used.
-    ASSERT_NOT_REACHED();
+    auto transform = graphicsElement().animatedLocalTransform();
+    if (!transform.isIdentity())
+        setHasSVGTransform();
 }
 
 void RenderSVGBlock::willBeDestroyed()
@@ -70,57 +57,51 @@ void RenderSVGBlock::willBeDestroyed()
 
 void RenderSVGBlock::styleDidChange(StyleDifference diff, const RenderStyle* oldStyle)
 {
-    if (diff == StyleDifference::Layout)
-        setNeedsBoundariesUpdate();
     RenderBlockFlow::styleDidChange(diff, oldStyle);
     SVGResourcesCache::clientStyleChanged(*this, diff, style());
 }
 
-void RenderSVGBlock::computeOverflow(LayoutUnit oldClientAfterEdge, bool recomputeFloats)
+void RenderSVGBlock::applyTransform(TransformationMatrix& transform, const RenderStyle& style, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption> options) const
 {
-    RenderBlockFlow::computeOverflow(oldClientAfterEdge, recomputeFloats);
-
-    const auto* textShadow = style().textShadow();
-    if (!textShadow)
-        return;
-
-    LayoutRect borderRect = borderBoxRect();
-    textShadow->adjustRectForShadow(borderRect);
-    addVisualOverflow(snappedIntRect(borderRect));
+    SVGRenderSupport::applyTransform(*this, transform, style, boundingBox, std::nullopt, std::nullopt, options);
 }
 
-LayoutRect RenderSVGBlock::clippedOverflowRect(const RenderLayerModelObject* repaintContainer, VisibleRectContext) const
+void RenderSVGBlock::mapLocalToContainer(const RenderLayerModelObject* repaintContainer, TransformState& transformState, OptionSet<MapCoordinatesMode> mode, bool* wasFixed) const
 {
-    return SVGRenderSupport::clippedOverflowRectForRepaint(*this, repaintContainer);
+    SVGRenderSupport::mapLocalToContainer(*this, repaintContainer, transformState, mode, wasFixed);
+}
+
+LayoutSize RenderSVGBlock::offsetFromContainer(RenderElement& container, const LayoutPoint&, bool*) const
+{
+    ASSERT_UNUSED(container, &container == this->container());
+    ASSERT(!isInFlowPositioned());
+    ASSERT(!isAbsolutelyPositioned());
+    ASSERT(!isInline());
+    return LayoutSize();
 }
 
 std::optional<LayoutRect> RenderSVGBlock::computeVisibleRectInContainer(const LayoutRect& rect, const RenderLayerModelObject* container, VisibleRectContext context) const
 {
-    std::optional<FloatRect> adjustedRect = computeFloatVisibleRectInContainer(rect, container, context);
-    if (adjustedRect)
-        return enclosingLayoutRect(*adjustedRect);
-    return std::nullopt;
+    return SVGRenderSupport::computeVisibleRectInContainer(*this, rect, container, context);
 }
 
-std::optional<FloatRect> RenderSVGBlock::computeFloatVisibleRectInContainer(const FloatRect& rect, const RenderLayerModelObject* container, VisibleRectContext context) const
+void RenderSVGBlock::absoluteRects(Vector<IntRect>& rects, const LayoutPoint& accumulatedOffset) const
 {
-    return SVGRenderSupport::computeFloatVisibleRectInContainer(*this, rect, container, context);
+    rects.append(snappedIntRect(LayoutRect(accumulatedOffset + location(), size())));
 }
 
-void RenderSVGBlock::mapLocalToContainer(const RenderLayerModelObject* ancestorContainer, TransformState& transformState, OptionSet<MapCoordinatesMode>, bool* wasFixed) const
+void RenderSVGBlock::absoluteQuads(Vector<FloatQuad>& quads, bool* wasFixed) const
 {
-    SVGRenderSupport::mapLocalToContainer(*this, ancestorContainer, transformState, wasFixed);
+    quads.append(localToAbsoluteQuad(FloatRect(objectBoundingBox()), UseTransforms, wasFixed));
 }
 
-const RenderObject* RenderSVGBlock::pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap& geometryMap) const
+LayoutRect RenderSVGBlock::clippedOverflowRect(const RenderLayerModelObject* repaintContainer, VisibleRectContext context) const
 {
-    return SVGRenderSupport::pushMappingToContainer(*this, ancestorToStopAt, geometryMap);
-}
+    if (style().visibility() != Visibility::Visible && !enclosingLayer()->hasVisibleContent())
+        return LayoutRect();
 
-bool RenderSVGBlock::nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation&, const LayoutPoint&, HitTestAction)
-{
-    ASSERT_NOT_REACHED();
-    return false;
+    ASSERT(!view().frameView().layoutContext().isPaintOffsetCacheEnabled());
+    return computeRect(visualOverflowRect(), repaintContainer, context);
 }
 
 }

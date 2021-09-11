@@ -55,8 +55,6 @@ public:
     };
 
 protected:
-    virtual AffineTransform localCoordinateSpaceTransform(SVGLocatable::CTMScope) const { return AffineTransform(); }
-
     static FloatRect getBBox(SVGElement*, StyleUpdateStrategy);
     static AffineTransform computeCTM(SVGElement*, CTMScope, StyleUpdateStrategy);
 };

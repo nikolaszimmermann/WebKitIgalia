@@ -25,6 +25,8 @@
 #include "FrameView.h"
 #include "GraphicsContext.h"
 #include "RenderSVGRoot.h"
+#include "RenderSVGShape.h"
+#include "RenderView.h"
 #include "SVGElementTypeHelpers.h"
 #include "SVGFitToViewBox.h"
 #include "SVGRenderingContext.h"
@@ -40,6 +42,8 @@ RenderSVGResourcePattern::RenderSVGResourcePattern(SVGPatternElement& element, R
     : RenderSVGResourceContainer(element, WTFMove(style))
 {
 }
+
+RenderSVGResourcePattern::~RenderSVGResourcePattern() = default;
 
 SVGPatternElement& RenderSVGResourcePattern::patternElement() const
 {
@@ -68,8 +72,9 @@ void RenderSVGResourcePattern::collectPatternAttributes(PatternAttributes& attri
         pattern.collectPatternAttributes(attributes);
 
         auto* resources = SVGResourcesCache::cachedResourcesForRenderer(*current);
-        ASSERT_IMPLIES(resources && resources->linkedResource(), is<RenderSVGResourcePattern>(resources->linkedResource()));
-        current = resources ? downcast<RenderSVGResourcePattern>(resources->linkedResource()) : nullptr;
+        RenderObject* linkedResource = resources ? resources->linkedResource() : nullptr;
+        ASSERT_IMPLIES(resources && linkedResource, is<RenderSVGResourcePattern>(linkedResource));
+        current = resources ? downcast<RenderSVGResourcePattern>(linkedResource) : nullptr;
     }
 }
 
@@ -95,16 +100,14 @@ PatternData* RenderSVGResourcePattern::buildPattern(RenderElement& renderer, Opt
     if (!buildTileImageTransform(renderer, m_attributes, patternElement(), tileBoundaries, tileImageTransform))
         return nullptr;
 
-    AffineTransform absoluteTransformIgnoringRotation = SVGRenderingContext::calculateTransformationToOutermostCoordinateSystem(renderer);
-
-    // Ignore 2D rotation, as it doesn't affect the size of the tile.
+    // Ignore 2D rotation, as it doesn't affect the size of the tile
+    auto absoluteTransformIgnoringRotation = context.getCTM(GraphicsContext::DefinitelyIncludeDeviceScale);
     SVGRenderingContext::clear2DRotation(absoluteTransformIgnoringRotation);
     FloatRect absoluteTileBoundaries = absoluteTransformIgnoringRotation.mapRect(tileBoundaries);
     FloatRect clampedAbsoluteTileBoundaries;
 
     // Scale the tile size to match the scale level of the patternTransform.
-    absoluteTileBoundaries.scale(static_cast<float>(m_attributes.patternTransform().xScale()),
-        static_cast<float>(m_attributes.patternTransform().yScale()));
+    absoluteTileBoundaries.scale(static_cast<float>(m_attributes.patternTransform().xScale()), static_cast<float>(m_attributes.patternTransform().yScale()));
 
     // Build tile image.
     auto tileImage = createTileImage(m_attributes, tileBoundaries, absoluteTileBoundaries, tileImageTransform, clampedAbsoluteTileBoundaries, context.renderingMode());
@@ -122,7 +125,7 @@ PatternData* RenderSVGResourcePattern::buildPattern(RenderElement& renderer, Opt
     patternData->transform.translate(tileBoundaries.location());
     patternData->transform.scale(tileBoundaries.size() / tileImageSize);
 
-    AffineTransform patternTransform = m_attributes.patternTransform();
+    const auto& patternTransform = m_attributes.patternTransform();
     if (!patternTransform.isIdentity())
         patternData->transform = patternTransform * patternData->transform;
 
@@ -169,11 +172,16 @@ bool RenderSVGResourcePattern::applyResource(RenderElement& renderer, const Rend
     context->save();
 
     const SVGRenderStyle& svgStyle = style.svgStyle();
+    bool isRenderingClipOrMask = renderer.view().frameView().paintBehavior().contains(PaintBehavior::RenderingSVGClipOrMask);
 
     if (resourceMode.contains(RenderSVGResourceMode::ApplyToFill)) {
         context->setAlpha(svgStyle.fillOpacity());
         context->setFillPattern(*patternData->pattern);
-        context->setFillRule(svgStyle.fillRule());
+
+        if (isRenderingClipOrMask)
+            context->setFillRule(SVGRenderSupport::clipRuleForRenderer(renderer));
+        else
+            context->setFillRule(svgStyle.fillRule());
     } else if (resourceMode.contains(RenderSVGResourceMode::ApplyToStroke)) {
         if (svgStyle.vectorEffect() == VectorEffect::NonScalingStroke)
             patternData->pattern->setPatternSpaceTransform(transformOnNonScalingStroke(&renderer, patternData->transform));
@@ -226,7 +234,7 @@ static inline FloatRect calculatePatternBoundaries(const PatternAttributes& attr
                                                    const FloatRect& objectBoundingBox,
                                                    const SVGPatternElement& patternElement)
 {
-    return SVGLengthContext::resolveRectangle(&patternElement, attributes.patternUnits(), objectBoundingBox, attributes.x(), attributes.y(), attributes.width(), attributes.height());
+    return SVGLengthContext::resolveRectangle(patternElement, attributes.patternUnits(), objectBoundingBox, attributes.x(), attributes.y(), attributes.width(), attributes.height());
 }
 
 bool RenderSVGResourcePattern::buildTileImageTransform(RenderElement& renderer,
@@ -258,29 +266,26 @@ RefPtr<ImageBuffer> RenderSVGResourcePattern::createTileImage(const PatternAttri
     if (!tileImage)
         return nullptr;
 
-    GraphicsContext& tileImageContext = tileImage->context();
+    auto& tileImageContext = tileImage->context();
 
     // The image buffer represents the final rendered size, so the content has to be scaled (to avoid pixelation).
     tileImageContext.scale(clampedAbsoluteTileBoundaries.size() / tileBoundaries.size());
 
-    // Apply tile image transformations.
-    if (!tileImageTransform.isIdentity())
-        tileImageContext.concatCTM(tileImageTransform);
-
-    AffineTransform contentTransformation;
-    if (attributes.patternContentUnits() == SVGUnitTypes::SVG_UNIT_TYPE_OBJECTBOUNDINGBOX)
-        contentTransformation = tileImageTransform;
+    auto* patternRenderer = static_cast<RenderSVGResourcePattern*>(attributes.patternContentElement()->renderer());
+    ASSERT(patternRenderer);
+    ASSERT(patternRenderer->hasLayer());
 
     // Draw the content into the ImageBuffer.
-    for (auto& child : childrenOfType<SVGElement>(*attributes.patternContentElement())) {
-        if (!child.renderer())
-            continue;
-        if (child.renderer()->needsLayout())
-            return nullptr;
-        SVGRenderingContext::renderSubtreeToContext(tileImageContext, *child.renderer(), contentTransformation);
-    }
-
+    patternRenderer->layer()->paintSVGResourceLayer(tileImageContext, LayoutRect::infiniteRect(), tileImageTransform);
     return tileImage;
+}
+
+void RenderSVGResourcePattern::updateFromStyle()
+{
+    RenderSVGResourceContainer::updateFromStyle();
+
+    // This cannot use the standard overflow clip mechanism, since the clip rect is only known when the pattern is referenced, not on its own.
+    setHasNonVisibleOverflow(false);
 }
 
 }

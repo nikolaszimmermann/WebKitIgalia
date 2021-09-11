@@ -23,8 +23,10 @@
 #include "Frame.h"
 #include "FrameView.h"
 #include "GraphicsContext.h"
+#include "RenderSVGShape.h"
 #include "RenderStyle.h"
 #include "RenderView.h"
+#include "SVGRenderSupport.h"
 
 namespace WebCore {
 
@@ -39,22 +41,24 @@ bool RenderSVGResourceSolidColor::applyResource(RenderElement& renderer, const R
 
     const SVGRenderStyle& svgStyle = style.svgStyle();
 
-    bool isRenderingMask = renderer.view().frameView().paintBehavior().contains(PaintBehavior::RenderingSVGMask);
+    bool isRenderingClipOrMask = renderer.view().frameView().paintBehavior().contains(PaintBehavior::RenderingSVGClipOrMask);
 
     if (resourceMode.contains(RenderSVGResourceMode::ApplyToFill)) {
-        if (!isRenderingMask)
-            context->setAlpha(svgStyle.fillOpacity());
-        else
+        if (isRenderingClipOrMask) {
             context->setAlpha(1);
-        context->setFillColor(style.colorByApplyingColorFilter(m_color));
-        if (!isRenderingMask)
+            context->setFillRule(SVGRenderSupport::clipRuleForRenderer(renderer));
+        } else {
+            context->setAlpha(svgStyle.fillOpacity());
             context->setFillRule(svgStyle.fillRule());
+        }
+
+        context->setFillColor(style.colorByApplyingColorFilter(m_color));
 
         if (resourceMode.contains(RenderSVGResourceMode::ApplyToText))
             context->setTextDrawingMode(TextDrawingMode::Fill);
     } else if (resourceMode.contains(RenderSVGResourceMode::ApplyToStroke)) {
         // When rendering the mask for a RenderSVGResourceClipper, the stroke code path is never hit.
-        ASSERT(!isRenderingMask);
+        ASSERT(!isRenderingClipOrMask);
         context->setAlpha(svgStyle.strokeOpacity());
         context->setStrokeColor(style.colorByApplyingColorFilter(m_color));
 

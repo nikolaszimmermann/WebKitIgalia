@@ -87,7 +87,7 @@ public:
 
     ExceptionOr<float> valueForBindings()
     {
-        return m_value.valueForBindings(SVGLengthContext { contextElement() });
+        return m_value.valueForBindings(ensureLengthContext());
     }
 
     ExceptionOr<void> setValueForBindings(float value)
@@ -95,7 +95,7 @@ public:
         if (isReadOnly())
             return Exception { NoModificationAllowedError };
 
-        auto result = m_value.setValue(SVGLengthContext { contextElement() }, value);
+        auto result = m_value.setValue(ensureLengthContext(), value);
         if (result.hasException())
             return result;
         
@@ -152,7 +152,7 @@ public:
         if (unitType == SVG_LENGTHTYPE_UNKNOWN || unitType > SVG_LENGTHTYPE_PC)
             return Exception { NotSupportedError };
 
-        auto result = m_value.convertToSpecifiedUnits(SVGLengthContext { contextElement() }, static_cast<SVGLengthType>(unitType));
+        auto result = m_value.convertToSpecifiedUnits(ensureLengthContext(), static_cast<SVGLengthType>(unitType));
         if (result.hasException())
             return result;
 
@@ -164,6 +164,9 @@ public:
     {
         return m_value.valueAsString();
     }
+
+private:
+    const SVGLengthContext& ensureLengthContext();
 };
 
 } // namespace WebCore

@@ -22,9 +22,11 @@
 #include "config.h"
 #include "RenderSVGTransformableContainer.h"
 
+#include "SVGContainerLayout.h"
 #include "SVGElementTypeHelpers.h"
 #include "SVGGElement.h"
 #include "SVGGraphicsElement.h"
+#include "SVGPathData.h"
 #include "SVGUseElement.h"
 #include <wtf/IsoMallocInlines.h>
 
@@ -34,43 +36,96 @@ WTF_MAKE_ISO_ALLOCATED_IMPL(RenderSVGTransformableContainer);
 
 RenderSVGTransformableContainer::RenderSVGTransformableContainer(SVGGraphicsElement& element, RenderStyle&& style)
     : RenderSVGContainer(element, WTFMove(style))
-    , m_needsTransformUpdate(true)
-    , m_didTransformToRootUpdate(false)
 {
 }
 
-bool RenderSVGTransformableContainer::calculateLocalTransform()
+inline SVGUseElement* associatedUseElement(SVGGraphicsElement& element)
 {
-    SVGGraphicsElement& element = graphicsElement();
-
     // If we're either the renderer for a <use> element, or for any <g> element inside the shadow
     // tree, that was created during the use/symbol/svg expansion in SVGUseElement. These containers
     // need to respect the translations induced by their corresponding use elements x/y attributes.
-    SVGUseElement* useElement = nullptr;
     if (is<SVGUseElement>(element))
-        useElement = &downcast<SVGUseElement>(element);
-    else if (element.isInShadowTree() && is<SVGGElement>(element)) {
+        return &downcast<SVGUseElement>(element);
+
+    if (element.isInShadowTree() && is<SVGGElement>(element)) {
         SVGElement* correspondingElement = element.correspondingElement();
         if (is<SVGUseElement>(correspondingElement))
-            useElement = downcast<SVGUseElement>(correspondingElement);
+            return downcast<SVGUseElement>(correspondingElement);
     }
 
-    if (useElement) {
-        SVGLengthContext lengthContext(useElement);
-        FloatSize translation(useElement->x().value(lengthContext), useElement->y().value(lengthContext));
-        if (translation != m_lastTranslation)
-            m_needsTransformUpdate = true;
-        m_lastTranslation = translation;
+    return nullptr;
+}
+
+FloatPoint RenderSVGTransformableContainer::extraContainerTranslation() const
+{
+    if (auto* useElement = associatedUseElement(graphicsElement())) {
+        const auto& lengthContext = useElement->lengthContext();
+        return { useElement->x().value(lengthContext), useElement->y().value(lengthContext) };
     }
 
-    m_didTransformToRootUpdate = m_needsTransformUpdate || SVGRenderSupport::transformToRootChanged(parent());
-    if (!m_needsTransformUpdate)
-        return false;
+    return { };
+}
 
-    m_localTransform = element.animatedLocalTransform();
-    m_localTransform.translate(m_lastTranslation);
-    m_needsTransformUpdate = false;
-    return true;
+void RenderSVGTransformableContainer::calculateViewport()
+{
+    RenderSVGContainer::calculateViewport();
+
+    if (auto* useElement = associatedUseElement(graphicsElement()))
+        useElement->updateLengthContext();
+
+    m_supplementalLocalToParentTransform.makeIdentity();
+
+    auto translation = extraContainerTranslation();
+    m_supplementalLocalToParentTransform.translate(translation.x(), translation.y());
+
+    m_didTransformToRootUpdate = m_hadTransformUpdate || SVGContainerLayout::transformToRootChanged(parent());
+}
+
+void RenderSVGTransformableContainer::layoutChildren()
+{
+    RenderSVGContainer::layoutChildren();
+    m_didTransformToRootUpdate = false;
+}
+
+void RenderSVGTransformableContainer::updateFromStyle()
+{
+    RenderSVGContainer::updateFromStyle();
+
+    if (associatedUseElement(graphicsElement()))
+        setHasSVGTransform();
+}
+
+const Path& RenderSVGTransformableContainer::computeClipPath(AffineTransform& transform) const
+{
+    if (auto* useElement = associatedUseElement(graphicsElement())) {
+        auto* rendererClipChildPtr = useElement->rendererClipChild();
+        if (rendererClipChildPtr && is<RenderSVGModelObject>(rendererClipChildPtr)) {
+            auto& rendererClipChild = downcast<RenderSVGModelObject>(*rendererClipChildPtr);
+
+            auto& rendererUseElement = downcast<RenderSVGTransformableContainer>(*useElement->renderer());
+            ASSERT(rendererUseElement.hasLayer());
+            transform.multiply(rendererUseElement.layer()->currentTransform(RenderStyle::individualTransformOperations).toAffineTransform());
+
+            return rendererClipChild.computeClipPath(transform);
+        }
+
+        return sharedEmptyPath();
+    }
+
+    return RenderSVGModelObject::computeClipPath(transform);
+}
+
+void RenderSVGTransformableContainer::applyTransform(TransformationMatrix& transform, const RenderStyle& style, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption> options) const
+{
+    SVGRenderSupport::applyTransform(*this, transform, style, boundingBox, std::nullopt, hasSVGTransform() ? std::make_optional(m_supplementalLocalToParentTransform) : std::nullopt, options);
+}
+
+void RenderSVGTransformableContainer::styleWillChange(StyleDifference diff, const RenderStyle& newStyle)
+{
+    const RenderStyle* oldStyle = hasInitializedStyle() ? &style() : nullptr;
+    if (oldStyle && oldStyle->transform() != newStyle.transform())
+        setHadTransformUpdate();
+    RenderSVGContainer::styleWillChange(diff, newStyle);
 }
 
 SVGGraphicsElement& RenderSVGTransformableContainer::graphicsElement()

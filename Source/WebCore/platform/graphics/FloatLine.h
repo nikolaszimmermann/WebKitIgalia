@@ -85,4 +85,14 @@ template<class Decoder> std::optional<FloatLine> FloatLine::decode(Decoder& deco
     return {{ *start, *end }};
 }
 
+inline bool operator==(const FloatLine& a, const FloatLine& b)
+{
+    return a.start() == b.start() && a.end() == b.end();
+}
+
+inline bool operator!=(const FloatLine& a, const FloatLine& b)
+{
+    return !(a == b);
+}
+
 }

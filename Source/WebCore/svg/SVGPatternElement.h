@@ -39,8 +39,6 @@ public:
 
     void collectPatternAttributes(PatternAttributes&) const;
 
-    AffineTransform localCoordinateSpaceTransform(SVGLocatable::CTMScope) const final;
-
     const SVGLengthValue& x() const { return m_x->currentValue(); }
     const SVGLengthValue& y() const { return m_y->currentValue(); }
     const SVGLengthValue& width() const { return m_width->currentValue(); }

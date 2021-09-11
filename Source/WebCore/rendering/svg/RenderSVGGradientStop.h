@@ -42,14 +42,15 @@ private:
 
     void layout() override;
 
+    FloatRect objectBoundingBox() const final { return FloatRect(); }
+    FloatRect strokeBoundingBox() const final { return FloatRect(); }
+    FloatRect repaintBoundingBox() const final { return FloatRect(); }
+
     // These overrides are needed to prevent ASSERTs on <svg><stop /></svg>
     // RenderObject's default implementations ASSERT_NOT_REACHED()
     // https://bugs.webkit.org/show_bug.cgi?id=20400
     LayoutRect clippedOverflowRect(const RenderLayerModelObject*, VisibleRectContext) const override { return LayoutRect(); }
-    FloatRect objectBoundingBox() const override { return FloatRect(); }
-    FloatRect strokeBoundingBox() const override { return FloatRect(); }
-    FloatRect repaintRectInLocalCoordinates() const override { return FloatRect(); }
-    bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint&, HitTestAction) override { return false; }
+    bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation&, const LayoutPoint&, HitTestAction) override { return false; }
 
     bool isSVGGradientStop() const override { return true; }
     const char* renderName() const override { return "RenderSVGGradientStop"; }

@@ -30,7 +30,9 @@
 
 #pragma once
 
-#include "RenderElement.h"
+#include "RenderLayer.h"
+#include "RenderLayerModelObject.h"
+#include "SVGBoundingBoxComputation.h"
 #include "SVGElement.h"
 #include "SVGRenderSupport.h"
 
@@ -43,18 +45,11 @@ namespace WebCore {
 
 class SVGElement;
 
-class RenderSVGModelObject : public RenderElement {
+class RenderSVGModelObject : public RenderLayerModelObject {
     WTF_MAKE_ISO_ALLOCATED(RenderSVGModelObject);
 public:
-    LayoutRect clippedOverflowRect(const RenderLayerModelObject* repaintContainer, VisibleRectContext) const override;
-    std::optional<FloatRect> computeFloatVisibleRectInContainer(const FloatRect&, const RenderLayerModelObject* container, VisibleRectContext) const final;
-    LayoutRect outlineBoundsForRepaint(const RenderLayerModelObject* repaintContainer, const RenderGeometryMap*) const final;
+    bool requiresLayer() const override { return true; }
 
-    void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const final;
-    void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const override;
-
-    void mapLocalToContainer(const RenderLayerModelObject* ancestorContainer, TransformState&, OptionSet<MapCoordinatesMode>, bool* wasFixed) const final;
-    const RenderObject* pushMappingToContainer(const RenderLayerModelObject* ancestorToStopAt, RenderGeometryMap&) const final;
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
 
     static bool checkIntersection(RenderElement*, const FloatRect&);
@@ -62,17 +57,58 @@ public:
 
     SVGElement& element() const { return downcast<SVGElement>(nodeForNonAnonymous()); }
 
+    void applyTransform(TransformationMatrix&, const RenderStyle&, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption>) const override;
+
+    // Mimic the RenderBox accessors - by sharing the same terminology the painting / hit testing / layout logic is
+    // similar to read compared to non-SVG renderers such as RenderBox & friends.
+    LayoutRect borderBoxRectEquivalent() const { return { LayoutPoint(), m_layoutRect.size() }; }
+    LayoutRect contentBoxRectEquivalent() const { return borderBoxRectEquivalent(); }
+    LayoutRect frameRectEquivalent() const { return m_layoutRect; }
+    LayoutRect visualOverflowRectEquivalent() const { return SVGBoundingBoxComputation::computeVisualOverflowRect(*this); }
+
+    void applyTopLeftLocationOffsetEquivalent(LayoutPoint& point) const { point.moveBy(layoutLocation()); }
+
+    LayoutRect layoutRect() const { return m_layoutRect; }
+    void setLayoutRect(const LayoutRect& layoutRect) { m_layoutRect = layoutRect; }
+    void setLayoutLocation(const LayoutPoint& layoutLocation) { m_layoutRect.setLocation(layoutLocation); }
+
+    LayoutPoint paintingLocation() const { return toLayoutPoint(layoutLocation() - flooredLayoutPoint(objectBoundingBox().minXMinYCorner())); }
+    LayoutPoint layoutLocation() const { return m_layoutRect.location(); }
+    LayoutSize layoutLocationOffset() const { return toLayoutSize(m_layoutRect.location()); }
+    LayoutSize layoutSize() const { return m_layoutRect.size(); }
+
+    // For RenderLayer only
+    FloatRect borderBoxRectInFragmentEquivalent(RenderFragmentContainer*, RenderBox::RenderBoxFragmentInfoFlags = RenderBox::CacheRenderBoxFragmentInfo) const;
+    virtual LayoutRect overflowClipRect(const LayoutPoint& location, RenderFragmentContainer* = nullptr, OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize, PaintPhase = PaintPhase::BlockBackground) const;
+    LayoutRect overflowClipRectForChildLayers(const LayoutPoint& location, RenderFragmentContainer* fragment, OverlayScrollbarSizeRelevancy relevancy) { return overflowClipRect(location, fragment, relevancy); }
+
+    virtual const Path& computeClipPath(AffineTransform&) const;
+
 protected:
     RenderSVGModelObject(SVGElement&, RenderStyle&&);
 
     void willBeDestroyed() override;
+    void updateFromStyle() override;
+    bool shouldPaintSVGRenderer(const PaintInfo&) const;
+
+    LayoutRect clippedOverflowRect(const RenderLayerModelObject* repaintContainer, VisibleRectContext) const override;
+    std::optional<LayoutRect> computeVisibleRectInContainer(const LayoutRect&, const RenderLayerModelObject* container, VisibleRectContext) const override;
+    void mapAbsoluteToLocalPoint(OptionSet<MapCoordinatesMode>, TransformState&) const override;
+    void mapLocalToContainer(const RenderLayerModelObject* ancestorContainer, TransformState&, OptionSet<MapCoordinatesMode>, bool* wasFixed) const final;
+    LayoutRect outlineBoundsForRepaint(const RenderLayerModelObject* repaintContainer, const RenderGeometryMap*) const final;
+    const RenderObject* pushMappingToContainer(const RenderLayerModelObject*, RenderGeometryMap&) const override;
+    LayoutSize offsetFromContainer(RenderElement&, const LayoutPoint&, bool* offsetDependsOnPoint = nullptr) const override;
+
+    void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const override;
+    void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const override;
+
+    void addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) override;
+    void paintSVGOutline(PaintInfo&, const LayoutPoint& adjustedPaintOffset);
 
 private:
     bool isRenderSVGModelObject() const final { return true; }
 
-    // This method should never be called, SVG uses a different nodeAtPoint method
-    bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) override;
-    void absoluteFocusRingQuads(Vector<FloatQuad>&) final;
+    LayoutRect m_layoutRect;
 };
 
 } // namespace WebCore

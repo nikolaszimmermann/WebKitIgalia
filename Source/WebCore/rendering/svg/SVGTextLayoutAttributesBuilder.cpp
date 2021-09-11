@@ -115,8 +115,10 @@ void SVGTextLayoutAttributesBuilder::collectTextPositioningElements(RenderBoxMod
         SVGTextPositioningElement* element = SVGTextPositioningElement::elementFromRenderer(inlineChild);
 
         unsigned atPosition = m_textPositions.size();
-        if (element)
+        if (element) {
+            element->updateLengthContext();
             m_textPositions.append(TextPosition(element, m_textLength));
+        }
 
         collectTextPositioningElements(inlineChild, lastCharacterWasSpace);
 
@@ -193,7 +195,7 @@ void SVGTextLayoutAttributesBuilder::fillCharacterDataMap(const TextPosition& po
         return;
 
     float lastRotation = SVGTextLayoutAttributes::emptyValue();
-    SVGLengthContext lengthContext(position.element);
+    const auto& lengthContext = position.element->lengthContext();
     for (unsigned i = 0; i < position.length; ++i) {
         const SVGLengthList* xListPtr = i < xListSize ? &xList : nullptr;
         const SVGLengthList* yListPtr = i < yListSize ? &yList : nullptr;

@@ -53,12 +53,12 @@ static inline RenderSVGResource* requestPaintingResource(RenderSVGResourceMode m
 {
     const SVGRenderStyle& svgStyle = style.svgStyle();
 
-    bool isRenderingMask = renderer.view().frameView().paintBehavior().contains(PaintBehavior::RenderingSVGMask);
+    bool isRenderingClipOrMask = renderer.view().frameView().paintBehavior().contains(PaintBehavior::RenderingSVGClipOrMask);
 
     // If we have no fill/stroke, return nullptr.
     if (mode == RenderSVGResourceMode::ApplyToFill) {
         // When rendering the mask for a RenderSVGResourceClipper, always use the initial fill paint server, and ignore stroke.
-        if (isRenderingMask) {
+        if (isRenderingClipOrMask) {
             RenderSVGResourceSolidColor* colorResource = RenderSVGResource::sharedSolidPaintingResource();
             colorResource->setColor(SVGRenderStyle::initialFillPaintColor());
             return colorResource;
@@ -67,7 +67,7 @@ static inline RenderSVGResource* requestPaintingResource(RenderSVGResourceMode m
         if (!svgStyle.hasFill())
             return nullptr;
     } else {
-        if (!svgStyle.hasStroke() || isRenderingMask)
+        if (!svgStyle.hasStroke() || isRenderingClipOrMask)
             return nullptr;
     }
 

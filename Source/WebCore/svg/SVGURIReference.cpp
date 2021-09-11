@@ -58,23 +58,24 @@ void SVGURIReference::parseAttribute(const QualifiedName& name, const AtomString
         m_href->setBaseValInternal(value);
 }
 
-String SVGURIReference::fragmentIdentifierFromIRIString(const String& url, const Document& document)
+StringView SVGURIReference::fragmentIdentifierFromIRIString(const String& urlString, const Document& document)
 {
-    size_t start = url.find('#');
+    size_t start = urlString.find('#');
     if (start == notFound)
-        return emptyString();
+        return { };
 
     if (!start)
-        return url.substring(1);
+        return StringView(urlString).substring(1);
 
-    URL base = URL(document.baseURL(), url.substring(0, start));
-    String fragmentIdentifier = url.substring(start);
-    URL kurl(base, fragmentIdentifier);
-    if (equalIgnoringFragmentIdentifier(kurl, document.url()))
+    StringView urlView(urlString);
+    URL base(document.baseURL(), urlView.substring(0, start).toStringWithoutCopying());
+    auto fragmentIdentifier = urlView.substring(start);
+    URL url(base, fragmentIdentifier.toStringWithoutCopying());
+    if (equalIgnoringFragmentIdentifier(url, document.url()))
         return fragmentIdentifier.substring(1);
 
     // The url doesn't have any fragment identifier.
-    return emptyString();
+    return { };
 }
 
 auto SVGURIReference::targetElementFromIRIString(const String& iri, const TreeScope& treeScope, RefPtr<Document> externalDocument) -> TargetElementResult

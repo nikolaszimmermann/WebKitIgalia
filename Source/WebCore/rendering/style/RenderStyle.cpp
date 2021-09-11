@@ -1403,12 +1403,25 @@ void RenderStyle::setHasAttrContent()
 
 void RenderStyle::applyTransform(TransformationMatrix& transform, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption> options) const
 {
+    if (options.contains(RenderStyle::TransformOperationOption::TransformOrigin)) {
+        bool hasRotate = m_rareNonInheritedData->rotate && !m_rareNonInheritedData->rotate->isIdentity();
+        bool hasScale = m_rareNonInheritedData->scale && !m_rareNonInheritedData->scale->isIdentity();
+        auto& transformOperations = m_rareNonInheritedData->transform->operations;
+        if (!hasRotate && !hasScale && !transformOperations.affectedByTransformOrigin())
+            options.remove(RenderStyle::TransformOperationOption::TransformOrigin);
+    }
+
+    return applyTransform(transform, boundingBox, { }, options);
+}
+
+void RenderStyle::applyTransform(TransformationMatrix& transform, const FloatRect& boundingBox, const WTF::Function<void(const TransformOperations&)>& applyTransformOperationsCallback, OptionSet<RenderStyle::TransformOperationOption> options) const
+{
     // https://www.w3.org/TR/css-transforms-2/#ctm
     // The transformation matrix is computed from the transform, transform-origin, translate, rotate, scale, and offset properties as follows:
     // 1. Start with the identity matrix.
 
-    auto& transformOperations = m_rareNonInheritedData->transform->operations;
-    bool applyTransformOrigin = options.contains(RenderStyle::TransformOperationOption::TransformOrigin) && ((m_rareNonInheritedData->rotate && !m_rareNonInheritedData->rotate->isIdentity()) || (m_rareNonInheritedData->scale && !m_rareNonInheritedData->scale->isIdentity()) || transformOperations.affectedByTransformOrigin());
+    const auto& transformOperations = m_rareNonInheritedData->transform->operations;
+    bool applyTransformOrigin = options.contains(RenderStyle::TransformOperationOption::TransformOrigin);
 
     // 2. Translate by the computed X, Y, and Z values of transform-origin.
     FloatPoint3D originTranslate;
@@ -1439,8 +1452,12 @@ void RenderStyle::applyTransform(TransformationMatrix& transform, const FloatRec
     // 6. Translate and rotate by the transform specified by offset. (FIXME: we don't support the offset property)
 
     // 7. Multiply by each of the transform functions in transform from left to right.
-    for (auto& operation : transformOperations.operations())
-        operation->apply(transform, boundingBox.size());
+    if (applyTransformOperationsCallback)
+        applyTransformOperationsCallback(transformOperations);
+    else {
+        for (const auto& operation : transformOperations.operations())
+            operation->apply(transform, boundingBox.size());
+    }
 
     // 8. Translate by the negated computed X, Y and Z values of transform-origin.
     if (applyTransformOrigin)

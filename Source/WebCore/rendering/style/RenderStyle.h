@@ -73,6 +73,7 @@
 #include <memory>
 #include <wtf/DataRef.h>
 #include <wtf/Forward.h>
+#include <wtf/Function.h>
 #include <wtf/NeverDestroyed.h>
 #include <wtf/OptionSet.h>
 #include <wtf/StdLibExtras.h>
@@ -690,6 +691,7 @@ public:
     static constexpr OptionSet<TransformOperationOption> allTransformOperations = { TransformOperationOption::TransformOrigin, TransformOperationOption::Translate, TransformOperationOption::Rotate, TransformOperationOption::Scale };
     static constexpr OptionSet<TransformOperationOption> individualTransformOperations = { TransformOperationOption::Translate, TransformOperationOption::Rotate, TransformOperationOption::Scale };
     void applyTransform(TransformationMatrix&, const FloatRect& boundingBox, OptionSet<TransformOperationOption> = allTransformOperations) const;
+    void applyTransform(TransformationMatrix&, const FloatRect& boundingBox, const WTF::Function<void(const TransformOperations&)>& applyTransformOperationsCallback, OptionSet<TransformOperationOption> = allTransformOperations) const;
     void setPageScaleTransform(float);
 
     bool hasMask() const { return m_rareNonInheritedData->mask->hasImage() || m_rareNonInheritedData->maskBoxImage.hasImage(); }

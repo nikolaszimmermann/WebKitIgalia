@@ -52,7 +52,6 @@
 #include "RenderFragmentedFlow.h"
 #include "RenderGeometryMap.h"
 #include "RenderInline.h"
-#include "RenderIterator.h"
 #include "RenderLayer.h"
 #include "RenderLayerBacking.h"
 #include "RenderLayerCompositor.h"
@@ -61,9 +60,9 @@
 #include "RenderMultiColumnSet.h"
 #include "RenderRuby.h"
 #include "RenderSVGBlock.h"
+#include "RenderSVGHiddenContainer.h"
 #include "RenderSVGInline.h"
 #include "RenderSVGModelObject.h"
-#include "RenderSVGResourceContainer.h"
 #include "RenderSVGRoot.h"
 #include "RenderScrollbarPart.h"
 #include "RenderTableRow.h"
@@ -71,6 +70,7 @@
 #include "RenderTreeBuilder.h"
 #include "RenderView.h"
 #include "RenderWidget.h"
+#include "SVGLayoutLogger.h"
 #include "SVGRenderSupport.h"
 #include "StyleResolver.h"
 #include "TransformState.h"
@@ -514,6 +514,9 @@ static inline bool objectIsRelayoutBoundary(const RenderElement* object)
     if (!object->hasNonVisibleOverflow())
         return false;
 
+    if (object->isSVGLayerAwareRenderer())
+        return false;
+
     if (object->style().width().isIntrinsicOrAuto() || object->style().height().isIntrinsicOrAuto() || object->style().height().isPercentOrCalculated())
         return false;
 
@@ -660,7 +663,7 @@ RenderBlock* RenderObject::containingBlock() const
 {
     auto containingBlockForRenderer = [](const RenderElement& renderer)
     {
-        if (renderer.isAbsolutelyPositioned())
+        if (renderer.isAbsolutelyPositioned() || renderer.isSVGForeignObject())
             return renderer.containingBlockForAbsolutePosition();
         if (renderer.isFixedPositioned())
             return renderer.containingBlockForFixedPosition();
@@ -872,6 +875,59 @@ void RenderObject::propagateRepaintToParentWithOutlineAutoIfNeeded(const RenderL
     ASSERT_NOT_REACHED();
 }
 
+void RenderObject::repaintUsingContainer(const RenderLayerModelObject* repaintContainer, const LayoutRect& oldRepaintRect, const LayoutRect& newRepaintRect, bool shouldClipToLayer) const
+{
+    // This repaintUsingContainer() variant is optimized for two non-empty repaint rects.
+    ASSERT(!oldRepaintRect.isEmpty());
+    ASSERT(!newRepaintRect.isEmpty());
+
+    if (!repaintContainer)
+        repaintContainer = &view();
+
+    if (is<RenderFragmentedFlow>(*repaintContainer)) {
+        downcast<RenderFragmentedFlow>(*repaintContainer).repaintRectangleInFragments(oldRepaintRect);
+        downcast<RenderFragmentedFlow>(*repaintContainer).repaintRectangleInFragments(newRepaintRect);
+        return;
+    }
+
+    // Make sure that hidden SVG containers (such as <defs> / <clipPath> / ...) and their children (!) never trigger repaints.
+    if (lineageOfType<RenderSVGHiddenContainer>(*this).first())
+        return;
+
+    if (!isSVGLayerAwareRenderer() || isSVGRoot() || isSVGForeignObject()) {
+        propagateRepaintToParentWithOutlineAutoIfNeeded(*repaintContainer, oldRepaintRect);
+        propagateRepaintToParentWithOutlineAutoIfNeeded(*repaintContainer, newRepaintRect);
+    }
+
+    if (repaintContainer->hasFilter() && repaintContainer->layer() && repaintContainer->layer()->requiresFullLayerImageForFilters()) {
+        repaintContainer->layer()->setFilterBackendNeedsRepaintingInRect(oldRepaintRect);
+        repaintContainer->layer()->setFilterBackendNeedsRepaintingInRect(newRepaintRect);
+        return;
+    }
+
+    if (repaintContainer->isRenderView()) {
+        RenderView& view = this->view();
+        ASSERT(repaintContainer == &view);
+        bool viewHasCompositedLayer = view.isComposited();
+        if (!viewHasCompositedLayer || view.layer()->backing()->paintsIntoWindow()) {
+            LayoutRect adjustedOldRepaintRect = oldRepaintRect;
+            LayoutRect adjustedNewRepaintRect = newRepaintRect;
+            if (viewHasCompositedLayer && view.layer()->transform()) {
+                adjustedOldRepaintRect = LayoutRect(view.layer()->transform()->mapRect(snapRectToDevicePixels(adjustedOldRepaintRect, document().deviceScaleFactor())));
+                adjustedNewRepaintRect = LayoutRect(view.layer()->transform()->mapRect(snapRectToDevicePixels(adjustedNewRepaintRect, document().deviceScaleFactor())));
+            }
+            view.repaintViewRectangles(adjustedOldRepaintRect, adjustedNewRepaintRect);
+            return;
+        }
+    }
+
+    if (view().usesCompositing()) {
+        ASSERT(repaintContainer->isComposited());
+        repaintContainer->layer()->setBackingNeedsRepaintInRect(oldRepaintRect, shouldClipToLayer ? GraphicsLayer::ClipToLayer : GraphicsLayer::DoNotClipToLayer);
+        repaintContainer->layer()->setBackingNeedsRepaintInRect(newRepaintRect, shouldClipToLayer ? GraphicsLayer::ClipToLayer : GraphicsLayer::DoNotClipToLayer);
+    }
+}
+
 void RenderObject::repaintUsingContainer(const RenderLayerModelObject* repaintContainer, const LayoutRect& r, bool shouldClipToLayer) const
 {
     if (r.isEmpty())
@@ -885,7 +941,12 @@ void RenderObject::repaintUsingContainer(const RenderLayerModelObject* repaintCo
         return;
     }
 
-    propagateRepaintToParentWithOutlineAutoIfNeeded(*repaintContainer, r);
+    // Make sure that hidden SVG containers (such as <defs> / <clipPath> / ...) and their children (!) never trigger repaints.
+    if (lineageOfType<RenderSVGHiddenContainer>(*this).first())
+        return;
+
+    if (!isSVGLayerAwareRenderer() || isSVGRoot() || isSVGForeignObject())
+        propagateRepaintToParentWithOutlineAutoIfNeeded(*repaintContainer, r);
 
     if (repaintContainer->hasFilter() && repaintContainer->layer() && repaintContainer->layer()->requiresFullLayerImageForFilters()) {
         repaintContainer->layer()->setFilterBackendNeedsRepaintingInRect(r);
@@ -944,6 +1005,35 @@ void RenderObject::repaintRectangle(const LayoutRect& r, bool shouldClipToLayer)
     repaintUsingContainer(repaintContainer, computeRectForRepaint(dirtyRect, repaintContainer), shouldClipToLayer);
 }
 
+void RenderObject::repaintRectangles(const LayoutRect& oldRepaintRect, const LayoutRect& newRepaintRect, bool shouldClipToLayer) const
+{
+    // Don't repaint if we're unrooted (note that view() still returns the view when unrooted)
+    if (!isRooted())
+        return;
+
+    const RenderView& view = this->view();
+    if (view.printing())
+        return;
+
+    LayoutRect oldDirtyRect(oldRepaintRect);
+    LayoutRect newDirtyRect(newRepaintRect);
+    // FIXME: layoutDelta needs to be applied in parts before/after transforms and
+    // repaint containers. https://bugs.webkit.org/show_bug.cgi?id=23308
+    oldDirtyRect.move(view.frameView().layoutContext().layoutDelta());
+    newDirtyRect.move(view.frameView().layoutContext().layoutDelta());
+
+    RenderLayerModelObject* repaintContainer = containerForRepaint();
+    oldDirtyRect = computeRectForRepaint(oldDirtyRect, repaintContainer);
+    newDirtyRect = computeRectForRepaint(newDirtyRect, repaintContainer);
+
+    if (!oldDirtyRect.isEmpty() && !newDirtyRect.isEmpty())
+        repaintUsingContainer(repaintContainer, oldDirtyRect, newDirtyRect, shouldClipToLayer);
+    else if (!oldDirtyRect.isEmpty())
+        repaintUsingContainer(repaintContainer, oldDirtyRect, shouldClipToLayer);
+    else if (!newDirtyRect.isEmpty())
+        repaintUsingContainer(repaintContainer, newDirtyRect, shouldClipToLayer);
+}
+
 void RenderObject::repaintSlowRepaintObject() const
 {
     // Don't repaint if we're unrooted (note that view() still returns the view when unrooted)
@@ -992,11 +1082,6 @@ LayoutRect RenderObject::computeRect(const LayoutRect& rect, const RenderLayerMo
     return *computeVisibleRectInContainer(rect, repaintContainer, context);
 }
 
-FloatRect RenderObject::computeFloatRectForRepaint(const FloatRect& rect, const RenderLayerModelObject* repaintContainer) const
-{
-    return *computeFloatVisibleRectInContainer(rect, repaintContainer, visibleRectContextForRepaint());
-}
-
 std::optional<LayoutRect> RenderObject::computeVisibleRectInContainer(const LayoutRect& rect, const RenderLayerModelObject* container, VisibleRectContext context) const
 {
     if (container == this)
@@ -1007,7 +1092,7 @@ std::optional<LayoutRect> RenderObject::computeVisibleRectInContainer(const Layo
         return rect;
 
     LayoutRect adjustedRect = rect;
-    if (parent->hasNonVisibleOverflow()) {
+    if (parent->hasNonVisibleOverflow() && is<RenderBox>(parent)) {
         bool isEmpty = !downcast<RenderBox>(*parent).applyCachedClipAndScrollPosition(adjustedRect, container, context);
         if (isEmpty) {
             if (context.options.contains(VisibleRectContextOption::UseEdgeInclusiveIntersection))
@@ -1016,12 +1101,6 @@ std::optional<LayoutRect> RenderObject::computeVisibleRectInContainer(const Layo
         }
     }
     return parent->computeVisibleRectInContainer(adjustedRect, container, context);
-}
-
-std::optional<FloatRect> RenderObject::computeFloatVisibleRectInContainer(const FloatRect&, const RenderLayerModelObject*, VisibleRectContext) const
-{
-    ASSERT_NOT_REACHED();
-    return FloatRect();
 }
 
 #if ENABLE(TREE_DEBUGGING)
@@ -1042,13 +1121,24 @@ void RenderObject::showNodeTreeForThis() const
 
 void RenderObject::showRenderTreeForThis() const
 {
-    const WebCore::RenderObject* root = this;
+    const RenderObject* root = this;
     while (root->parent())
         root = root->parent();
     TextStream stream(TextStream::LineMode::MultipleLine, TextStream::Formatting::SVGStyleRect);
     outputRenderTreeLegend(stream);
     root->outputRenderSubTreeAndMark(stream, this, 1);
     WTFLogAlways("%s", stream.release().utf8().data());
+}
+
+void RenderObject::showSVGRenderTreeForThis() const
+{
+    const RenderElement* root = is<RenderElement>(this) ? downcast<RenderElement>(this) : parent();
+    if (!root)
+        return;
+    while (root->parent())
+        root = root->parent();
+    SVGLayoutLogger logger(WTFLogLevel::Always);
+    logger.dump(*root, this);
 }
 
 void RenderObject::showLineTreeForThis() const
@@ -1376,12 +1466,23 @@ bool RenderObject::shouldUseTransformFromContainer(const RenderObject* container
 
 void RenderObject::getTransformFromContainer(const RenderObject* containerObject, const LayoutSize& offsetInContainer, TransformationMatrix& transform) const
 {
+    bool usesSVGTransformationRules = isSVGLayerAwareRenderer() && !isSVGRoot();
+
     transform.makeIdentity();
-    transform.translate(offsetInContainer.width(), offsetInContainer.height());
+    if (!usesSVGTransformationRules)
+        transform.translate(offsetInContainer.width(), offsetInContainer.height());
+
     RenderLayer* layer;
-    if (hasLayer() && (layer = downcast<RenderLayerModelObject>(*this).layer()) && layer->transform())
-        transform.multiply(layer->currentTransform());
-    
+    if (hasLayer() && (layer = downcast<RenderLayerModelObject>(*this).layer())) {
+        auto layerTransform = layer->currentTransform();
+        if (is<RenderSVGRoot>(*this))
+            layerTransform.multiply(downcast<RenderSVGRoot>(*this).supplementalLocalToParentTransform());
+        transform.multiply(layerTransform);
+    }
+
+    if (usesSVGTransformationRules)
+        transform.translate(offsetInContainer.width(), offsetInContainer.height());
+
 #if ENABLE(3D_TRANSFORMS)
     if (containerObject && containerObject->hasLayer() && containerObject->style().hasPerspective()) {
         // Perpsective on the container affects us, so we have to factor it in here.
@@ -1539,8 +1640,6 @@ void RenderObject::willBeRemovedFromTree(IsInternalMove)
 #endif
 
     // FIXME: We should ASSERT(isRooted()) but we have some out-of-order removals which would need to be fixed first.
-    // Update cached boundaries in SVG renderers, if a child is removed.
-    parent()->setNeedsBoundariesUpdate();
 }
 
 void RenderObject::destroy()
@@ -1829,12 +1928,6 @@ Node* RenderObject::generatingPseudoHostElement() const
     return downcast<PseudoElement>(*node()).hostElement();
 }
 
-void RenderObject::setNeedsBoundariesUpdate()
-{
-    if (auto renderer = parent())
-        renderer->setNeedsBoundariesUpdate();
-}
-
 FloatRect RenderObject::objectBoundingBox() const
 {
     ASSERT_NOT_REACHED();
@@ -1847,30 +1940,10 @@ FloatRect RenderObject::strokeBoundingBox() const
     return FloatRect();
 }
 
-// Returns the smallest rectangle enclosing all of the painted content
-// respecting clipping, masking, filters, opacity, stroke-width and markers
-FloatRect RenderObject::repaintRectInLocalCoordinates() const
+FloatRect RenderObject::repaintBoundingBox() const
 {
     ASSERT_NOT_REACHED();
     return FloatRect();
-}
-
-AffineTransform RenderObject::localTransform() const
-{
-    static const AffineTransform identity;
-    return identity;
-}
-
-const AffineTransform& RenderObject::localToParentTransform() const
-{
-    static const AffineTransform identity;
-    return identity;
-}
-
-bool RenderObject::nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint&, HitTestAction)
-{
-    ASSERT_NOT_REACHED();
-    return false;
 }
 
 RenderFragmentedFlow* RenderObject::locateEnclosingFragmentedFlow() const
@@ -1919,6 +1992,12 @@ void RenderObject::setHasOutlineAutoAncestor(bool hasOutlineAutoAncestor)
         ensureRareData().setHasOutlineAutoAncestor(hasOutlineAutoAncestor);
 }
 
+void RenderObject::setHasSVGTransform(bool hasSVGTransform)
+{
+    if (hasSVGTransform || hasRareData())
+        ensureRareData().setHasSVGTransform(hasSVGTransform);
+}
+
 RenderObject::RareDataMap& RenderObject::rareDataMap()
 {
     static NeverDestroyed<RareDataMap> map;
@@ -1947,6 +2026,7 @@ RenderObject::RenderObjectRareData::RenderObjectRareData()
     : m_hasReflection(false)
     , m_isRenderFragmentedFlow(false)
     , m_hasOutlineAutoAncestor(false)
+    , m_hasSVGTransform(false)
 {
 }
 
@@ -2477,6 +2557,18 @@ void printRenderTreeForLiveDocuments()
     }
 }
 
+void printSVGRenderTreeForLiveDocuments()
+{
+    for (const auto* document : Document::allDocuments()) {
+        if (!document->renderView())
+            continue;
+        if (document->frame() && document->frame()->isMainFrame())
+            fprintf(stderr, "----------------------main frame--------------------------\n");
+        fprintf(stderr, "%s\n", document->url().string().utf8().data());
+        showSVGRenderTree(document->renderView());
+    }
+}
+
 void printLayerTreeForLiveDocuments()
 {
     for (const auto* document : Document::allDocuments()) {
@@ -2526,6 +2618,13 @@ void showRenderTree(const WebCore::RenderObject* object)
     if (!object)
         return;
     object->showRenderTreeForThis();
+}
+
+void showSVGRenderTree(const WebCore::RenderObject* object)
+{
+    if (!object)
+        return;
+    object->showSVGRenderTreeForThis();
 }
 
 #endif

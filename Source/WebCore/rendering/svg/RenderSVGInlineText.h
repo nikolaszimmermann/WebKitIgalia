@@ -57,7 +57,7 @@ private:
     void setRenderedText(const String&) override;
     void styleDidChange(StyleDifference, const RenderStyle*) override;
 
-    FloatRect objectBoundingBox() const override { return floatLinesBoundingBox(); }
+    FloatRect objectBoundingBox() const final { return floatLinesBoundingBox(); }
 
     bool isSVGInlineText() const override { return true; }
 

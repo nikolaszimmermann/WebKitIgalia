@@ -67,7 +67,7 @@ public:
         Vector<Ref<SVGLength>>& animatedItems = animated->items();
         SVGLengthMode lengthMode = animated->lengthMode();
 
-        SVGLengthContext lengthContext(&targetElement);
+        const auto& lengthContext = lengthContextFromElement(&targetElement);
         for (unsigned i = 0; i < toItems.size(); ++i) {
             SVGLengthType lengthType = (i < fromItems.size() && progress < 0.5 ? fromItems : toItems)[i]->value().lengthType();
 
@@ -90,7 +90,7 @@ private:
         if (!fromItems.size() || fromItems.size() != toItems.size())
             return;
 
-        SVGLengthContext lengthContext(&targetElement);
+        const auto& lengthContext = lengthContextFromElement(&targetElement);
         for (unsigned i = 0; i < fromItems.size(); ++i) {
             const SVGLengthValue& fromValue = fromItems[i]->value();
             SVGLengthValue& toValue = toItems[i]->value();

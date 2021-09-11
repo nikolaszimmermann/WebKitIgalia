@@ -31,6 +31,7 @@
 #include "RenderBlock.h"
 #include "RenderInline.h"
 #include "RenderSVGResourceSolidColor.h"
+#include "RenderSVGText.h"
 #include "RenderView.h"
 #include "SVGInlineTextBoxInlines.h"
 #include "SVGRenderingContext.h"
@@ -167,7 +168,9 @@ LayoutRect SVGInlineTextBox::localSelectionRect(unsigned start, unsigned end) co
         selectionRect.unite(fragmentRect);
     }
 
-    return enclosingIntRect(selectionRect);
+    const auto& rootBox = downcast<const SVGRootInlineBox>(root());
+    selectionRect.moveBy(-rootBox.renderSVGText().objectBoundingBox().location());
+    return enclosingLayoutRect(selectionRect);
 }
 
 static inline bool textShouldBePainted(const RenderSVGInlineText& textRenderer)
@@ -235,12 +238,33 @@ void SVGInlineTextBox::paintSelectionBackground(PaintInfo& paintInfo)
 
 void SVGInlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, LayoutUnit, LayoutUnit)
 {
-    ASSERT(paintInfo.shouldPaintWithinRoot(renderer()));
-    ASSERT(paintInfo.phase == PaintPhase::Foreground || paintInfo.phase == PaintPhase::Selection);
-    ASSERT(!truncation());
-
-    if (renderer().style().visibility() != Visibility::Visible)
+    if (!paintInfo.shouldPaintWithinRoot(renderer()) || renderer().style().visibility() != Visibility::Visible
+        || paintInfo.phase == PaintPhase::Outline || !hasTextContent())
         return;
+
+    ASSERT(!isLineBreak());
+    ASSERT(!truncation());
+    ASSERT(paintInfo.phase != PaintPhase::SelfOutline && paintInfo.phase != PaintPhase::ChildOutlines);
+
+    LayoutUnit logicalLeftSide = logicalLeftVisualOverflow();
+    LayoutUnit logicalRightSide = logicalRightVisualOverflow();
+    LayoutUnit logicalStart = logicalLeftSide + (isHorizontal() ? paintOffset.x() : paintOffset.y());
+    LayoutUnit logicalExtent = logicalRightSide - logicalLeftSide;
+
+    LayoutUnit paintEnd = isHorizontal() ? paintInfo.rect.maxX() : paintInfo.rect.maxY();
+    LayoutUnit paintStart = isHorizontal() ? paintInfo.rect.x() : paintInfo.rect.y();
+
+    if (logicalStart >= paintEnd || logicalStart + logicalExtent <= paintStart)
+        return;
+
+    bool isPrinting = renderer().document().printing();
+
+    // Determine whether or not we're selected.
+    bool haveSelection = !isPrinting && paintInfo.phase != PaintPhase::TextClip && selectionState() != RenderObject::HighlightState::None;
+    if (!haveSelection && paintInfo.phase == PaintPhase::Selection) {
+        // When only painting the selection, don't bother to paint if there is none.
+        return;
+    }
 
     // Note: We're explicitly not supporting composition & custom underlines and custom highlighters - unlike LegacyInlineTextBox.
     // If we ever need that for SVG, it's very easy to refactor and reuse the code.
@@ -264,7 +288,7 @@ void SVGInlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffse
     bool hasVisibleStroke = style.hasVisibleStroke();
 
     const RenderStyle* selectionStyle = &style;
-    if (hasSelection && shouldPaintSelectionHighlight) {
+    if (haveSelection && shouldPaintSelectionHighlight) {
         selectionStyle = parentRenderer.getCachedPseudoStyle(PseudoId::Selection);
         if (selectionStyle) {
             const SVGRenderStyle& svgSelectionStyle = selectionStyle->svgStyle();
@@ -277,7 +301,7 @@ void SVGInlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffse
             selectionStyle = &style;
     }
 
-    if (renderer().view().frameView().paintBehavior().contains(PaintBehavior::RenderingSVGMask)) {
+    if (renderer().view().frameView().paintBehavior().contains(PaintBehavior::RenderingSVGClipOrMask)) {
         hasFill = true;
         hasVisibleStroke = false;
     }
@@ -308,14 +332,14 @@ void SVGInlineTextBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffse
                     continue;
                 setPaintingResourceMode({ RenderSVGResourceMode::ApplyToFill, RenderSVGResourceMode::ApplyToText });
                 ASSERT(selectionStyle);
-                paintText(paintInfo.context(), style, *selectionStyle, fragment, hasSelection, paintSelectedTextOnly);
+                paintText(paintInfo.context(), style, *selectionStyle, fragment, haveSelection, paintSelectedTextOnly);
                 break;
             case PaintType::Stroke:
                 if (!hasVisibleStroke)
                     continue;
                 setPaintingResourceMode({ RenderSVGResourceMode::ApplyToStroke, RenderSVGResourceMode::ApplyToText});
                 ASSERT(selectionStyle);
-                paintText(paintInfo.context(), style, *selectionStyle, fragment, hasSelection, paintSelectedTextOnly);
+                paintText(paintInfo.context(), style, *selectionStyle, fragment, haveSelection, paintSelectedTextOnly);
                 break;
             case PaintType::Markers:
                 continue;
@@ -670,8 +694,12 @@ bool SVGInlineTextBox::nodeAtPoint(const HitTestRequest& request, HitTestResult&
                     fragment.buildFragmentTransform(fragmentTransform);
                     if (!fragmentTransform.isIdentity())
                         fragmentQuad = fragmentTransform.mapQuad(fragmentQuad);
-                    
-                    if (fragmentQuad.containsPoint(locationInContainer.point())) {
+
+                    FloatPoint absolutePoint = locationInContainer.point() - toLayoutSize(accumulatedOffset);
+                    const auto& rootBox = downcast<const SVGRootInlineBox>(root());
+                    absolutePoint.moveBy(rootBox.renderSVGText().objectBoundingBox().location());
+
+                    if (fragmentQuad.containsPoint(absolutePoint)) {
                         renderer().updateHitTestResult(result, locationInContainer.point() - toLayoutSize(accumulatedOffset));
                         if (result.addNodeToListBasedTestResult(renderer().nodeForHitTest(), request, locationInContainer, rect) == HitTestProgress::Stop)
                             return true;

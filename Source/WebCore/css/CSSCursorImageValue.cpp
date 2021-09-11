@@ -90,7 +90,7 @@ void CSSCursorImageValue::cursorElementChanged(SVGCursorElement& cursorElement)
     // FIXME: Seems wrong that changing an old cursor element, one that that is no longer the target, changes the hot spot.
     // FIXME: This will override a hot spot that was specified in CSS, which is probably incorrect.
     // FIXME: Should we clamp from float to int instead of just casting here?
-    SVGLengthContext lengthContext(nullptr);
+    const auto& lengthContext = cursorElement.lengthContext();
     m_hotSpot = IntPoint {
         static_cast<int>(std::round(cursorElement.x().value(lengthContext))),
         static_cast<int>(std::round(cursorElement.y().value(lengthContext)))

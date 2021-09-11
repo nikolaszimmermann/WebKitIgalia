@@ -30,11 +30,6 @@ namespace WebCore {
 class GraphicsContext;
 class SVGMaskElement;
 
-struct MaskerData {
-    WTF_MAKE_STRUCT_FAST_ALLOCATED;
-    RefPtr<ImageBuffer> maskImage;
-};
-
 class RenderSVGResourceMasker final : public RenderSVGResourceContainer {
     WTF_MAKE_ISO_ALLOCATED(RenderSVGResourceMasker);
 public:
@@ -42,6 +37,8 @@ public:
     virtual ~RenderSVGResourceMasker();
 
     inline SVGMaskElement& maskElement() const;
+
+    void applyMask(PaintInfo&, const RenderLayerModelObject& targetRenderer, const LayoutPoint& adjustedPaintOffset);
 
     void removeAllClientsFromCache(bool markForInvalidation = true) override;
     void removeClientFromCache(RenderElement&, bool markForInvalidation = true) override;
@@ -52,19 +49,18 @@ public:
     inline SVGUnitTypes::SVGUnitType maskContentUnits() const;
 
     RenderSVGResourceType resourceType() const override { return MaskerResourceType; }
+    bool isSVGResourceMasker() const override { return true; }
 
 private:
     void element() const = delete;
 
     const char* renderName() const override { return "RenderSVGResourceMasker"; }
-
-    bool drawContentIntoMaskImage(MaskerData*, const DestinationColorSpace&, RenderObject*);
-    void calculateMaskContentRepaintRect();
-
-    FloatRect m_maskContentBoundaries;
-    HashMap<RenderObject*, std::unique_ptr<MaskerData>> m_masker;
+    bool hasSVGMask() const override { return false; }
 };
 
 }
 
-SPECIALIZE_TYPE_TRAITS_RENDER_SVG_RESOURCE(RenderSVGResourceMasker, MaskerResourceType)
+SPECIALIZE_TYPE_TRAITS_BEGIN(WebCore::RenderSVGResourceMasker)
+static bool isType(const WebCore::RenderObject& renderer) { return renderer.isSVGResourceMasker(); }
+static bool isType(const WebCore::RenderSVGResource& resource) { return resource.resourceType() == WebCore::MaskerResourceType; }
+SPECIALIZE_TYPE_TRAITS_END()

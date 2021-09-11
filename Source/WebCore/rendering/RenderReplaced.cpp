@@ -41,10 +41,12 @@
 #include "RenderFragmentedFlow.h"
 #include "RenderImage.h"
 #include "RenderLayer.h"
+#include "RenderSVGRoot.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
 #include "RenderedDocumentMarker.h"
 #include "RuntimeEnabledFeatures.h"
+#include "SVGRenderSupport.h"
 #include "Settings.h"
 #include "VisiblePosition.h"
 #include <wtf/IsoMallocInlines.h>
@@ -218,7 +220,10 @@ void RenderReplaced::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
         paintBoxDecorations(paintInfo, adjustedPaintOffset);
     
     if (paintInfo.phase == PaintPhase::Mask) {
-        paintMask(paintInfo, adjustedPaintOffset);
+        if (is<RenderSVGRoot>(this))
+            SVGRenderSupport::paintSVGMask(*this, paintInfo, adjustedPaintOffset);
+        else
+            paintMask(paintInfo, adjustedPaintOffset);
         return;
     }
 
@@ -226,6 +231,11 @@ void RenderReplaced::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset)
     if (paintInfo.phase == PaintPhase::Outline || paintInfo.phase == PaintPhase::SelfOutline) {
         if (style().outlineWidth())
             paintOutline(paintInfo, paintRect);
+        return;
+    }
+
+    if (paintInfo.phase == PaintPhase::ClippingMask && is<RenderSVGRoot>(this)) {
+        SVGRenderSupport::paintSVGClippingMask(*this, paintInfo);
         return;
     }
 
@@ -285,11 +295,13 @@ bool RenderReplaced::shouldPaint(PaintInfo& paintInfo, const LayoutPoint& paintO
     if ((paintInfo.paintBehavior.contains(PaintBehavior::ExcludeSelection)) && isSelected())
         return false;
 
+    bool paintClippingMaskPhase = paintInfo.phase == PaintPhase::ClippingMask && is<RenderSVGRoot>(this);
     if (paintInfo.phase != PaintPhase::Foreground
         && paintInfo.phase != PaintPhase::Outline
         && paintInfo.phase != PaintPhase::SelfOutline
         && paintInfo.phase != PaintPhase::Selection
         && paintInfo.phase != PaintPhase::Mask
+        && !paintClippingMaskPhase
         && paintInfo.phase != PaintPhase::EventRegion)
         return false;
 

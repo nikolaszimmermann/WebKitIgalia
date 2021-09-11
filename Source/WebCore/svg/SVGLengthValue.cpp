@@ -24,6 +24,8 @@
 
 #include "AnimationUtilities.h"
 #include "CSSPrimitiveValue.h"
+#include "SVGElement.h"
+#include "SVGLength.h"
 #include "SVGLengthContext.h"
 #include "SVGParserUtilities.h"
 #include <wtf/text/StringConcatenateNumbers.h>
@@ -223,7 +225,7 @@ SVGLengthValue SVGLengthValue::blend(const SVGLengthValue& from, const SVGLength
         return { WebCore::blend(fromValue, toValue, { progress }), to.isZero() ? from.lengthType() : to.lengthType() };
     }
 
-    SVGLengthContext nonRelativeLengthContext(nullptr);
+    const auto& nonRelativeLengthContext = emptyLengthContext();
     auto fromValueInUserUnits = nonRelativeLengthContext.convertValueToUserUnits(from.valueInSpecifiedUnits(), from.lengthType(), from.lengthMode());
     if (fromValueInUserUnits.hasException())
         return { };
@@ -335,6 +337,17 @@ TextStream& operator<<(TextStream& ts, const SVGLengthValue& length)
 {
     ts << length.valueAsString();
     return ts;
+}
+
+// Avoid a dedicated SVGLength.cpp just for this
+const SVGLengthContext& SVGLength::ensureLengthContext()
+{
+    // If the contextElement does not have a renderer, then the length context was not updated yet,
+    // as that's usually done during layout. Enforce an update here, so we return accurate values.
+    auto* contextElement = const_cast<SVGElement*>(this->contextElement());
+    if (contextElement && !contextElement->renderer())
+        contextElement->updateLengthContext();
+    return lengthContextFromElement(contextElement);
 }
 
 }

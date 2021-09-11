@@ -41,7 +41,7 @@ class RenderElement;
 class SourceAlpha;
 class SourceGraphic;
 
-enum class FilterConsumer { FilterProperty, FilterFunction };
+enum class FilterConsumer { FilterProperty, FilterFunction, SVGFilterFunction };
 
 class CSSFilter final : public Filter {
     WTF_MAKE_FAST_ALLOCATED;
@@ -50,7 +50,7 @@ public:
     static Ref<CSSFilter> create();
 
     void setSourceImageRect(const FloatRect&);
-    void setFilterRegion(const FloatRect& filterRegion) { m_filterRegion = filterRegion; }
+    void setFilterRegion(const FloatRect&);
 
     ImageBuffer* output() const;
 
@@ -64,16 +64,21 @@ public:
     void determineFilterPrimitiveSubregion();
     IntOutsets outsets() const;
 
+    FloatRect sourceImageRect() const final { return m_sourceDrawingRegion; }
+    FloatRect filterRegion() const final { return m_absoluteFilterRegion; }
+    FloatRect filterRegionInUserSpace() const final { return m_filterRegion; }
+    FloatRect targetBoundingBox() const { return m_targetBoundingBox; }
+
+    bool hasEffects() const { return !m_effects.isEmpty(); }
+    bool usesEffectBoundingBoxMode() const { return m_usesEffectBoundingBoxMode; }
+    FilterEffect* lastEffect() const { return hasEffects() ? &m_effects.last().get() : nullptr; }
+
 private:
     CSSFilter();
     virtual ~CSSFilter();
 
     bool isCSSFilter() const final { return true; }
-
-    FloatRect sourceImageRect() const final { return m_sourceDrawingRegion; }
-
-    FloatRect filterRegion() const final { return m_filterRegion; }
-    FloatRect filterRegionInUserSpace() const final { return m_filterRegion; }
+    FloatSize scaledByFilterResolution(FloatSize) const final;
 
     RefPtr<FilterEffect> buildReferenceFilter(RenderElement&, FilterEffect& previousEffect, ReferenceFilterOperation&);
 
@@ -82,14 +87,16 @@ private:
     GraphicsContext* inputContext();
 
     bool updateBackingStoreRect(const FloatRect& filterRect);
-    void allocateBackingStoreIfNeeded(const GraphicsContext&);
+    void allocateBackingStoreIfNeeded(const GraphicsContext&, const FloatSize&, const DestinationColorSpace&);
 
     IntRect outputRect() const;
 
-    LayoutRect computeSourceImageRectForDirtyRect(const LayoutRect& filterBoxRect, const LayoutRect& dirtyRect);
+    FloatRect computeSourceImageRectForDirtyRect(const FloatRect& filterBoxRect, const FloatRect& dirtyRect);
 
     FloatRect m_sourceDrawingRegion;
     FloatRect m_filterRegion;
+    FloatRect m_absoluteFilterRegion;
+    FloatRect m_targetBoundingBox;
 
     Vector<Ref<FilterEffect>> m_effects;
     Ref<SourceGraphic> m_sourceGraphic;
@@ -100,6 +107,7 @@ private:
     bool m_graphicsBufferAttached { false };
     bool m_hasFilterThatMovesPixels { false };
     bool m_hasFilterThatShouldBeRestrictedBySecurityOrigin { false };
+    bool m_usesEffectBoundingBoxMode { false };
     
     std::unique_ptr<FilterEffectRenderer> m_filterRenderer;
 };

@@ -22,6 +22,7 @@
 
 #include "RenderLayer.h"
 #include "RenderSVGRoot.h"
+#include "RenderSVGShape.h"
 #include "RenderView.h"
 #include "SVGElementTypeHelpers.h"
 #include "SVGGraphicsElement.h"
@@ -51,6 +52,7 @@ RenderSVGResourceContainer::~RenderSVGResourceContainer() = default;
 void RenderSVGResourceContainer::layout()
 {
     StackStats::LayoutCheckPoint layoutCheckPoint;
+
     // Invalidate all resources if our layout changed.
     if (selfNeedsClientInvalidation())
         RenderSVGRoot::addResourceForClientInvalidation(this);
@@ -159,10 +161,11 @@ void RenderSVGResourceContainer::markClientForInvalidation(RenderObject& client,
     switch (mode) {
     case LayoutAndBoundariesInvalidation:
     case BoundariesInvalidation:
-        client.setNeedsBoundariesUpdate();
+        if (is<RenderSVGShape>(client))
+            downcast<RenderSVGShape>(client).setNeedsShapeUpdate();
         break;
     case RepaintInvalidation:
-        if (!client.renderTreeBeingDestroyed())
+        if (!client.renderTreeBeingDestroyed() && !client.needsLayout())
             client.repaint();
         break;
     case ParentOnlyInvalidation:

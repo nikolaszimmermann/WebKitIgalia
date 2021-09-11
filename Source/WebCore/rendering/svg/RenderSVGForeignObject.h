@@ -24,6 +24,7 @@
 #include "FloatPoint.h"
 #include "FloatRect.h"
 #include "RenderSVGBlock.h"
+#include "SVGBoundingBoxComputation.h"
 
 namespace WebCore {
 
@@ -39,32 +40,31 @@ public:
 
     void paint(PaintInfo&, const LayoutPoint&) override;
 
-    bool requiresLayer() const override { return false; }
     void layout() override;
 
-    FloatRect objectBoundingBox() const override { return FloatRect(FloatPoint(), m_viewport.size()); }
-    FloatRect strokeBoundingBox() const override { return FloatRect(FloatPoint(), m_viewport.size()); }
-    FloatRect repaintRectInLocalCoordinates() const override { return FloatRect(FloatPoint(), m_viewport.size()); }
-
-    bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint& pointInParent, HitTestAction) override;
-
-    void setNeedsTransformUpdate() override { m_needsTransformUpdate = true; }
+    FloatRect objectBoundingBox() const final { return m_viewport; }
+    FloatRect strokeBoundingBox() const final { return m_viewport; }
+    FloatRect repaintBoundingBox() const final { return SVGBoundingBoxComputation::computeRepaintBoundingBox(*this); }
 
 private:
     bool isSVGForeignObject() const override { return true; }
     void graphicsElement() const = delete;
     const char* renderName() const override { return "RenderSVGForeignObject"; }
 
+    LayoutPoint paintingLocation() const { return toLayoutPoint(location() - flooredLayoutPoint(m_viewport.minXMinYCorner())); }
+
     void updateLogicalWidth() override;
     LogicalExtentComputedValues computeLogicalHeight(LayoutUnit logicalHeight, LayoutUnit logicalTop) const override;
 
-    const AffineTransform& localToParentTransform() const override;
-    AffineTransform localTransform() const override { return m_localTransform; }
+    LayoutRect overflowClipRect(const LayoutPoint& location, RenderFragmentContainer* = nullptr, OverlayScrollbarSizeRelevancy = IgnoreOverlayScrollbarSize, PaintPhase = PaintPhase::BlockBackground) const final;
 
-    AffineTransform m_localTransform;
-    mutable AffineTransform m_localToParentTransform;
+    void styleDidChange(StyleDifference, const RenderStyle* oldStyle) override;
+    void updateFromStyle() override;
+
+    void applyTransform(TransformationMatrix&, const RenderStyle&, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption>) const final;
+
     FloatRect m_viewport;
-    bool m_needsTransformUpdate { true };
+    AffineTransform m_supplementalLocalToParentTransform;
 };
 
 } // namespace WebCore

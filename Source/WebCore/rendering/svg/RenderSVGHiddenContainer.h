@@ -39,12 +39,16 @@ private:
     bool isSVGHiddenContainer() const final { return true; }
     const char* renderName() const override { return "RenderSVGHiddenContainer"; }
 
-    void paint(PaintInfo&, const LayoutPoint&) final;
-
     LayoutRect clippedOverflowRect(const RenderLayerModelObject*, VisibleRectContext) const final { return LayoutRect(); }
-    void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const final;
+    std::optional<LayoutRect> computeVisibleRectInContainer(const LayoutRect&, const RenderLayerModelObject* container, VisibleRectContext) const final;
 
-    bool nodeAtFloatPoint(const HitTestRequest&, HitTestResult&, const FloatPoint& pointInParent, HitTestAction) final;
+    void absoluteRects(Vector<IntRect>&, const LayoutPoint& accumulatedOffset) const final;
+    void absoluteQuads(Vector<FloatQuad>&, bool* wasFixed) const final;
+    void addFocusRingRects(Vector<LayoutRect>&, const LayoutPoint& additionalOffset, const RenderLayerModelObject* paintContainer = 0) final;
+
+    bool nodeAtPoint(const HitTestRequest&, HitTestResult&, const HitTestLocation& locationInContainer, const LayoutPoint& accumulatedOffset, HitTestAction) final;
 };
 
 } // namespace WebCore
+
+SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSVGHiddenContainer, isSVGHiddenContainer())

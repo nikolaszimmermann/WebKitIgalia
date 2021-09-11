@@ -1505,13 +1505,17 @@ TiledBacking* GraphicsLayerCA::tiledBacking() const
 TransformationMatrix GraphicsLayerCA::layerTransform(const FloatPoint& position, const TransformationMatrix* customTransform) const
 {
     TransformationMatrix transform;
-    transform.translate(position.x(), position.y());
+    if (!usesSVGTransformationRules())
+        transform.translate(position.x(), position.y());
 
     TransformationMatrix currentTransform;
     if (customTransform)
         currentTransform = *customTransform;
     else if (m_transform)
         currentTransform = *m_transform;
+
+    if (usesSVGTransformationRules())
+        transform.translate(position.x(), position.y());
 
     transform.multiply(transformByApplyingAnchorPoint(currentTransform));
 

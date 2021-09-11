@@ -1443,7 +1443,7 @@ bool RenderBlock::isSelectionRoot() const
     if (isBody() || isDocumentElementRenderer() || hasNonVisibleOverflow()
         || isPositioned() || isFloating()
         || isTableCell() || isInlineBlockOrInlineTable()
-        || hasTransform() || hasReflection() || hasMask() || isWritingModeRoot()
+        || hasTransform() || hasReflection() || hasMask() || hasSVGMask() || isWritingModeRoot()
         || isRenderFragmentedFlow() || style().columnSpan() == ColumnSpan::All)
         return true;
     
@@ -2075,8 +2075,9 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
     if (!hitTestBorderRadius(locationInContainer, accumulatedOffset))
         return false;
 
-    // Now hit test our background
-    if (hitTestAction == HitTestBlockBackground || hitTestAction == HitTestChildBlockBackground) {
+    // Now hit test our background - disabled for SVG.
+    // SVG hit testing is never triggered for 'block background' - we only act like a block-level element.
+    if ((hitTestAction == HitTestBlockBackground || hitTestAction == HitTestChildBlockBackground) && !isSVGText()) {
         LayoutRect boundsRect(adjustedLocation, size());
         if (visibleToHitTesting(request) && locationInContainer.intersects(boundsRect)) {
             updateHitTestResult(result, flipForWritingMode(locationInContainer.point() - localOffset));

@@ -37,9 +37,11 @@
 #include "RenderRubyBase.h"
 #include "RenderRubyRun.h"
 #include "RenderRubyText.h"
+#include "RenderSVGResourceClipper.h"
 #include "RenderTableCell.h"
 #include "RenderTheme.h"
 #include "RenderView.h"
+#include "SVGRenderSupport.h"
 #include "Settings.h"
 #include "Text.h"
 #include "TextBoxPainter.h"
@@ -1102,7 +1104,7 @@ bool LegacyInlineFlowBox::nodeAtPoint(const HitTestRequest& request, HitTestResu
 
 void LegacyInlineFlowBox::paint(PaintInfo& paintInfo, const LayoutPoint& paintOffset, LayoutUnit lineTop, LayoutUnit lineBottom)
 {
-    if (paintInfo.phase != PaintPhase::Foreground && paintInfo.phase != PaintPhase::Selection && paintInfo.phase != PaintPhase::Outline && paintInfo.phase != PaintPhase::SelfOutline && paintInfo.phase != PaintPhase::ChildOutlines && paintInfo.phase != PaintPhase::TextClip && paintInfo.phase != PaintPhase::Mask && paintInfo.phase != PaintPhase::EventRegion)
+    if (paintInfo.phase != PaintPhase::Foreground && paintInfo.phase != PaintPhase::Selection && paintInfo.phase != PaintPhase::Outline && paintInfo.phase != PaintPhase::SelfOutline && paintInfo.phase != PaintPhase::ChildOutlines && paintInfo.phase != PaintPhase::TextClip && paintInfo.phase != PaintPhase::Mask && paintInfo.phase != PaintPhase::ClippingMask && paintInfo.phase != PaintPhase::EventRegion)
         return;
 
     LayoutRect overflowRect(visualOverflowRect(lineTop, lineBottom));
