@@ -110,6 +110,11 @@ public:
     void setWebAPIStatisticsEnabled(bool isEnabled) { m_webAPIStatisticsEnabled = isEnabled; }
     bool webAPIStatisticsEnabled() const { return m_webAPIStatisticsEnabled; }
 
+#if ENABLE(LAYER_BASED_SVG_ENGINE)
+    void setLayerBasedSVGEngineEnabled(bool isEnabled) { m_layerBasedSVGEngineEnabled = isEnabled; }
+    bool layerBasedSVGEngineEnabled() const { return m_layerBasedSVGEngineEnabled; }
+#endif
+
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
     void setLayoutFormattingContextEnabled(bool isEnabled) { m_layoutFormattingContextEnabled = isEnabled; }
     bool layoutFormattingContextEnabled() const { return m_layoutFormattingContextEnabled; }
@@ -293,6 +298,10 @@ private:
     bool m_keygenElementEnabled { false };
     bool m_pageAtRuleSupportEnabled { false };
     bool m_highlightAPIEnabled { false };
+
+#if ENABLE(LAYER_BASED_SVG_ENGINE)
+    bool m_layerBasedSVGEngineEnabled { false };
+#endif
 
 #if ENABLE(LAYOUT_FORMATTING_CONTEXT)
     bool m_layoutFormattingContextEnabled { false };
