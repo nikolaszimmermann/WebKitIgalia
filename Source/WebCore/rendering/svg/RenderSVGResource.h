@@ -19,7 +19,6 @@
 
 #pragma once
 
-#include "LegacyRenderSVGShape.h"
 #include "RenderStyleConstants.h"
 #include <wtf/TypeCasts.h>
 
@@ -47,9 +46,9 @@ class Color;
 class FloatRect;
 class GraphicsContext;
 class Path;
-class RenderObject;
-class RenderStyle;
+class RenderElement;
 class RenderSVGResourceSolidColor;
+class RenderStyle;
 
 class RenderSVGResource {
 public:
@@ -60,7 +59,7 @@ public:
     virtual void removeClientFromCache(RenderElement&, bool markForInvalidation = true) = 0;
 
     virtual bool applyResource(RenderElement&, const RenderStyle&, GraphicsContext*&, OptionSet<RenderSVGResourceMode>) = 0;
-    virtual void postApplyResource(RenderElement&, GraphicsContext*&, OptionSet<RenderSVGResourceMode>, const Path*, const LegacyRenderSVGShape*) { }
+    virtual void postApplyResource(RenderElement&, GraphicsContext*&, OptionSet<RenderSVGResourceMode>, const Path*, const RenderElement* /* shape */) { }
     virtual FloatRect resourceBoundingBox(const RenderObject&) = 0;
 
     virtual RenderSVGResourceType resourceType() const = 0;
@@ -71,6 +70,9 @@ public:
     static RenderSVGResourceSolidColor* sharedSolidPaintingResource();
 
     static void markForLayoutAndParentResourceInvalidation(RenderObject&, bool needsLayout = true);
+
+protected:
+    void fillAndStrokePathOrShape(GraphicsContext&, OptionSet<RenderSVGResourceMode>, const Path*, const RenderElement* shape) const;
 };
 
 } // namespace WebCore
