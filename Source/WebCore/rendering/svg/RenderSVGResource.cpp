@@ -26,11 +26,13 @@
 #include "Frame.h"
 #include "FrameView.h"
 #include "LegacyRenderSVGRoot.h"
+#include "LegacyRenderSVGShape.h"
 #include "RenderSVGResourceClipper.h"
 #include "RenderSVGResourceFilter.h"
 #include "RenderSVGResourceMasker.h"
 #include "RenderSVGResourceSolidColor.h"
 #include "RenderSVGRoot.h"
+#include "RenderSVGShape.h"
 #include "RenderView.h"
 #include "SVGResourceElementClient.h"
 #include "SVGResources.h"
@@ -240,6 +242,37 @@ void RenderSVGResource::markForLayoutAndParentResourceInvalidation(RenderObject&
         }
 
         current = current->parent();
+    }
+}
+
+void RenderSVGResource::fillAndStrokePathOrShape(GraphicsContext& context, OptionSet<RenderSVGResourceMode> resourceMode, const Path* path, const RenderElement* shape) const
+{
+    if (!path && !shape)
+        return;
+
+    if (shape)
+        ASSERT(shape->isSVGShapeOrLegacySVGShape());
+
+    if (resourceMode.contains(RenderSVGResourceMode::ApplyToFill)) {
+        if (path)
+            context.fillPath(*path);
+        else if (is<LegacyRenderSVGShape>(shape))
+            downcast<LegacyRenderSVGShape>(shape)->fillShape(context);
+#if ENABLE(LAYER_BASED_SVG_ENGINE)
+        else if (is<RenderSVGShape>(shape))
+            downcast<RenderSVGShape>(shape)->fillShape(context);
+#endif
+    }
+
+    if (resourceMode.contains(RenderSVGResourceMode::ApplyToStroke)) {
+        if (path)
+            context.strokePath(*path);
+        else if (is<LegacyRenderSVGShape>(shape))
+            downcast<LegacyRenderSVGShape>(shape)->strokeShape(context);
+#if ENABLE(LAYER_BASED_SVG_ENGINE)
+        else if (is<RenderSVGShape>(shape))
+            downcast<RenderSVGShape>(shape)->strokeShape(context);
+#endif
     }
 }
 

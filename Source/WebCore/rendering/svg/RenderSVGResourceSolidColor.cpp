@@ -67,23 +67,11 @@ bool RenderSVGResourceSolidColor::applyResource(RenderElement& renderer, const R
     return true;
 }
 
-void RenderSVGResourceSolidColor::postApplyResource(RenderElement&, GraphicsContext*& context, OptionSet<RenderSVGResourceMode> resourceMode, const Path* path, const LegacyRenderSVGShape* shape)
+void RenderSVGResourceSolidColor::postApplyResource(RenderElement&, GraphicsContext*& context, OptionSet<RenderSVGResourceMode> resourceMode, const Path* path, const RenderElement* shape)
 {
     ASSERT(context);
     ASSERT(!resourceMode.isEmpty());
-
-    if (resourceMode.contains(RenderSVGResourceMode::ApplyToFill)) {
-        if (path)
-            context->fillPath(*path);
-        else if (shape)
-            shape->fillShape(*context);
-    }
-    if (resourceMode.contains(RenderSVGResourceMode::ApplyToStroke)) {
-        if (path)
-            context->strokePath(*path);
-        else if (shape)
-            shape->strokeShape(*context);
-    }
+    fillAndStrokePathOrShape(*context, resourceMode, path, shape);
 }
 
 }
