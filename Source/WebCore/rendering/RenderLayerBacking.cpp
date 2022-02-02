@@ -657,8 +657,20 @@ void RenderLayerBacking::updateTransform(const RenderStyle& style)
     // baked into it, and we don't want that.
     TransformationMatrix t;
     if (m_owningLayer.hasTransform()) {
-        auto& renderBox = downcast<RenderBox>(renderer());
-        style.applyTransform(t, snapRectToDevicePixels(renderBox.borderBoxRect(), deviceScaleFactor()), RenderStyle::individualTransformOperations);
+        if (is<RenderBox>(renderer())) {
+            auto& renderBox = downcast<RenderBox>(renderer());
+            style.applyTransform(t, snapRectToDevicePixels(renderBox.borderBoxRect(), deviceScaleFactor()), RenderStyle::individualTransformOperations);
+        } else {
+#if ENABLE(LAYER_BASED_SVG_ENGINE)
+            if (is<RenderSVGModelObject>(renderer())) {
+                // FIXME: [LBSE] Upstream transform support for RenderSVGModelObject derived renderers
+                t.makeIdentity();
+            } else
+#endif
+            ASSERT_NOT_REACHED();
+            return;
+        }
+
         makeMatrixRenderable(t, compositor().canRender3DTransforms());
     }
     
