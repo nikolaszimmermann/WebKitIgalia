@@ -3766,7 +3766,7 @@ void RenderLayer::paintBackgroundForFragments(const LayerFragments& layerFragmen
         // Paint the background.
         // FIXME: Eventually we will collect the region from the fragment itself instead of just from the paint info.
         PaintInfo paintInfo(context, fragment.backgroundRect.rect(), PaintPhase::BlockBackground, paintBehavior, subtreePaintRootForRenderer, nullptr, nullptr, &localPaintingInfo.rootLayer->renderer(), this);
-        renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subpixelOffset));
+        renderer().paint(paintInfo, paintOffsetForRenderer(fragment, localPaintingInfo));
     }
 }
 
@@ -3848,7 +3848,7 @@ void RenderLayer::paintForegroundForFragmentsWithPhase(PaintPhase phase, const L
         PaintInfo paintInfo(context, fragment.foregroundRect.rect(), phase, paintBehavior, subtreePaintRootForRenderer, nullptr, nullptr, &localPaintingInfo.rootLayer->renderer(), this, localPaintingInfo.requireSecurityOriginAccessForWidgets);
         if (phase == PaintPhase::Foreground)
             paintInfo.overlapTestRequests = localPaintingInfo.overlapTestRequests;
-        renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subpixelOffset));
+        renderer().paint(paintInfo, paintOffsetForRenderer(fragment, localPaintingInfo));
     }
 }
 
@@ -3866,7 +3866,7 @@ void RenderLayer::paintOutlineForFragments(const LayerFragments& layerFragments,
         EventRegionContextStateSaver eventRegionStateSaver(localPaintingInfo.eventRegionContext);
 
         clipToRect(context, stateSaver, eventRegionStateSaver, localPaintingInfo, paintBehavior, fragment.backgroundRect, DoNotIncludeSelfForBorderRadius);
-        renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subpixelOffset));
+        renderer().paint(paintInfo, paintOffsetForRenderer(fragment, localPaintingInfo));
     }
 }
 
@@ -3886,7 +3886,7 @@ void RenderLayer::paintMaskForFragments(const LayerFragments& layerFragments, Gr
         // Paint the mask.
         // FIXME: Eventually we will collect the region from the fragment itself instead of just from the paint info.
         PaintInfo paintInfo(context, fragment.backgroundRect.rect(), PaintPhase::Mask, paintBehavior, subtreePaintRootForRenderer, nullptr, nullptr, &localPaintingInfo.rootLayer->renderer(), this);
-        renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subpixelOffset));
+        renderer().paint(paintInfo, paintOffsetForRenderer(fragment, localPaintingInfo));
     }
 }
 
@@ -3904,7 +3904,7 @@ void RenderLayer::paintChildClippingMaskForFragments(const LayerFragments& layer
 
         // Paint the clipped mask.
         PaintInfo paintInfo(context, fragment.backgroundRect.rect(), PaintPhase::ClippingMask, paintBehavior, subtreePaintRootForRenderer, nullptr, nullptr, &localPaintingInfo.rootLayer->renderer(), this);
-        renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subpixelOffset));
+        renderer().paint(paintInfo, paintOffsetForRenderer(fragment, localPaintingInfo));
     }
 }
 
@@ -3920,7 +3920,7 @@ void RenderLayer::paintOverflowControlsForFragments(const LayerFragments& layerF
         EventRegionContextStateSaver eventRegionStateSaver(localPaintingInfo.eventRegionContext);
 
         clipToRect(context, stateSaver, eventRegionStateSaver, localPaintingInfo, { }, fragment.backgroundRect);
-        m_scrollableArea->paintOverflowControls(context, roundedIntPoint(toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subpixelOffset)), snappedIntRect(fragment.backgroundRect.rect()), true);
+        m_scrollableArea->paintOverflowControls(context, roundedIntPoint(paintOffsetForRenderer(fragment, localPaintingInfo)), snappedIntRect(fragment.backgroundRect.rect()), true);
     }
 }
 
@@ -3931,7 +3931,7 @@ void RenderLayer::collectEventRegionForFragments(const LayerFragments& layerFrag
     for (const auto& fragment : layerFragments) {
         PaintInfo paintInfo(context, fragment.foregroundRect.rect(), PaintPhase::EventRegion, paintBehavior);
         paintInfo.eventRegionContext = localPaintingInfo.eventRegionContext;
-        renderer().paint(paintInfo, toLayoutPoint(fragment.layerBounds.location() - renderBoxLocation() + localPaintingInfo.subpixelOffset));
+        renderer().paint(paintInfo, paintOffsetForRenderer(fragment, localPaintingInfo));
     }
 }
 
