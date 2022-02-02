@@ -1,7 +1,7 @@
 /*
  * Copyright (C) 2006-2020 Apple Inc. All rights reserved.
  * Copyright (C) 2019 Adobe. All rights reserved.
- * Copyright (c) 2020 Igalia S.L.
+ * Copyright (c) 2020, 2021, 2022 Igalia S.L.
  *
  * Portions are Copyright (C) 1998 Netscape Communications Corporation.
  *
@@ -106,6 +106,7 @@
 #include "RenderMultiColumnFlow.h"
 #include "RenderReplica.h"
 #include "RenderSVGForeignObject.h"
+#include "RenderSVGModelObject.h"
 #include "RenderSVGResourceClipper.h"
 #include "RenderScrollbar.h"
 #include "RenderScrollbarPart.h"
@@ -1293,7 +1294,8 @@ static inline LayoutRect computeReferenceBox(const RenderObject& renderer, CSSBo
     // https://bugs.webkit.org/show_bug.cgi?id=129047
     if (!renderer.isBox())
         return rootRelativeBounds;
-    
+
+    // FIXME: [LBSE] Upstream transform support for RenderSVGModelObject derived renderers
     return computeReferenceRectFromBox(downcast<RenderBox>(renderer), boxType, offsetFromRoot);
 }
 
@@ -1314,9 +1316,30 @@ void RenderLayer::updateTransform()
     }
     
     if (hasTransform) {
-        auto& renderBox = downcast<RenderBox>(renderer());
+        // RenderLayer creation is only possible for RenderLayerModelObject derived renderers: RenderBox,
+        // RenderInline and RenderLineBreak. The latter explicitly turns off layer creation, by returning
+        // false from requiresLayer(). Specifying a CSS 'transform' property does not influence the layer
+        // creation for RenderInline, as its requiresLayer() method does not test if CSS transforms are
+        // present. Therefore - when LBSE is turned off - only RenderBox derived renderers can end up here.
+        //
+        // When LBSE is turned on, RenderSVGModelObject derived renderers can also potentially create
+        // transformable layers and reach this code path.
         m_transform->makeIdentity();
-        renderBox.style().applyTransform(*m_transform, snapRectToDevicePixels(renderBox.referenceBox(transformBoxToCSSBoxType(renderBox.style().transformBox())), renderBox.document().deviceScaleFactor()));
+
+        if (is<RenderBox>(renderer())) {
+            auto& renderBox = downcast<RenderBox>(renderer());
+            renderBox.style().applyTransform(*m_transform, snapRectToDevicePixels(renderBox.referenceBox(transformBoxToCSSBoxType(renderBox.style().transformBox())), renderBox.document().deviceScaleFactor()));
+        } else {
+#if ENABLE(LAYER_BASED_SVG_ENGINE)
+            if (is<RenderSVGModelObject>(renderer())) {
+                // FIXME: [LBSE] Upstream transform support for RenderSVGModelObject derived renderers
+                m_transform->makeIdentity();
+            } else
+#endif
+            ASSERT_NOT_REACHED();
+            return;
+        }
+
         makeMatrixRenderable(*m_transform, canRender3DTransforms());
     }
 
@@ -1332,6 +1355,7 @@ TransformationMatrix RenderLayer::currentTransform(OptionSet<RenderStyle::Transf
     if (!m_transform)
         return { };
 
+    // FIXME: [LBSE] Upstream transform support for RenderSVGModelObject derived renderers
     if (!is<RenderBox>(renderer()))
         return { };
 
@@ -1758,6 +1782,7 @@ bool RenderLayer::updateLayerPosition(OptionSet<UpdateLayerPositionsFlag>* flags
 
 TransformationMatrix RenderLayer::perspectiveTransform(const LayoutRect& layerRect) const
 {
+    // FIXME: [LBSE] Upstream transform support for RenderSVGModelObject derived renderers
     if (!is<RenderBox>(renderer()))
         return { };
 
@@ -1791,6 +1816,10 @@ TransformationMatrix RenderLayer::perspectiveTransform(const LayoutRect& layerRe
 FloatPoint RenderLayer::perspectiveOrigin() const
 {
     if (!renderer().hasTransformRelatedProperty())
+        return { };
+
+    // FIXME: [LBSE] Upstream transform support for RenderSVGModelObject derived renderers
+    if (!is<RenderBox>(renderer()))
         return { };
 
     auto borderBox = downcast<RenderBox>(renderer()).borderBoxRect();
