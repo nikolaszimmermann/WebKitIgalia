@@ -766,6 +766,14 @@ void RenderLayer::rebuildZOrderLists()
 void RenderLayer::rebuildZOrderLists(std::unique_ptr<Vector<RenderLayer*>>& posZOrderList, std::unique_ptr<Vector<RenderLayer*>>& negZOrderList, OptionSet<Compositing>& accumulatedDirtyFlags)
 {
     bool includeHiddenLayers = compositor().usesCompositing();
+
+#if ENABLE(LAYER_BASED_SVG_ENGINE)
+    // SVG allows hit-testing invisible content, depending on the pointer-events settings. So we always have to
+    // include hidden layers for SVG in the z-order lists.
+    if (!includeHiddenLayers && renderer().isSVGLayerAwareRenderer() && renderer().document().settings().layerBasedSVGEngineEnabled())
+        includeHiddenLayers = true;
+#endif
+
     for (RenderLayer* child = firstChild(); child; child = child->nextSibling()) {
         if (!isReflectionLayer(*child))
             child->collectLayers(includeHiddenLayers, posZOrderList, negZOrderList, accumulatedDirtyFlags);
