@@ -1,3 +1,23 @@
+2022-02-06  Nikolas Zimmermann  <nzimmermann@igalia.com>
+
+        [LBSE] Activate LBSE for <rect> painting
+        https://bugs.webkit.org/show_bug.cgi?id=236194
+
+        Reviewed by NOBODY (OOPS!).
+
+        Finally activate LBSE for <rect> elements -- painting <rect> elements
+        now works as expected in LBSE. Try using MiniBrowser and switch
+        from legacy engine to LBSE and back -- this now works just fine and
+        rebuilds the render tree / updates display.
+
+        Covered by existing tests, no change in behaviour.
+
+        * rendering/svg/SVGRenderTreeAsText.cpp:
+        (WebCore::writeStyle):
+        (WebCore::writeChildren):
+        * svg/SVGRectElement.cpp:
+        (WebCore::SVGRectElement::createElementRenderer):
+
 2022-02-21  Alex Christensen  <achristensen@webkit.org>
 
         Improve const correctness for SecurityOrigin accessors
