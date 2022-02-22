@@ -26,10 +26,10 @@ namespace WebCore {
     
 class SVGGraphicsElement;
 
-class RenderSVGTransformableContainer final : public LegacyRenderSVGContainer {
-    WTF_MAKE_ISO_ALLOCATED(RenderSVGTransformableContainer);
+class LegacyRenderSVGTransformableContainer final : public LegacyRenderSVGContainer {
+    WTF_MAKE_ISO_ALLOCATED(LegacyRenderSVGTransformableContainer);
 public:
-    RenderSVGTransformableContainer(SVGGraphicsElement&, RenderStyle&&);
+    LegacyRenderSVGTransformableContainer(SVGGraphicsElement&, RenderStyle&&);
 
     bool isSVGTransformableContainer() const override { return true; }
     const AffineTransform& localToParentTransform() const override { return m_localTransform; }
@@ -51,4 +51,4 @@ private:
 
 } // namespace WebCore
 
-SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(RenderSVGTransformableContainer, isSVGTransformableContainer())
+SPECIALIZE_TYPE_TRAITS_RENDER_OBJECT(LegacyRenderSVGTransformableContainer, isSVGTransformableContainer())
