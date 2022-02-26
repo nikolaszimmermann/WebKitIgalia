@@ -1421,7 +1421,7 @@ void RenderStyle::setHasAttrContent()
     SET_VAR(m_rareNonInheritedData, hasAttrContent, true);
 }
 
-void RenderStyle::applyTransform(TransformationMatrix& transform, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption> options) const
+void RenderStyle::applyTransform(TransformationMatrix& transform, const FloatRect& boundingBox, OptionSet<RenderStyle::TransformOperationOption> options, WTF::Function<AffineTransform()>&& externalAffineTransformationSource) const
 {
     // https://www.w3.org/TR/css-transforms-2/#ctm
     // The transformation matrix is computed from the transform, transform-origin, translate, rotate, scale, and offset properties as follows:
@@ -1465,8 +1465,13 @@ void RenderStyle::applyTransform(TransformationMatrix& transform, const FloatRec
         applyMotionPathTransform(transform, boundingBox);
 
     // 7. Multiply by each of the transform functions in transform from left to right.
-    for (auto& operation : transformOperations.operations())
-        operation->apply(transform, boundingBox.size());
+    if (transformOperations.size()) {
+        for (auto& operation : transformOperations.operations())
+            operation->apply(transform, boundingBox.size());
+    } else if (externalAffineTransformationSource) {
+        // SVG may provide additional non-CSS transformation operations.
+        transform.multiplyAffineTransform(externalAffineTransformationSource());
+    }
 
     // 8. Translate by the negated computed X, Y and Z values of transform-origin.
     if (applyTransformOrigin)

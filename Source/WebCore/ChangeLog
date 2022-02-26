@@ -1,3 +1,51 @@
+2022-03-08  Nikolas Zimmermann  <nzimmermann@igalia.com>
+
+        Allow to override CSS transform in RenderStyle::applyTransform()
+        https://bugs.webkit.org/show_bug.cgi?id=237590
+
+        Reviewed by NOBODY (OOPS!).
+
+        Allow to override CSS transform in RenderStyle::applyTransform().
+
+        RenderStyle::applyTransform() implements the algorithm given in
+        CSS Transforms Module Level 2 (https://www.w3.org/TR/css-transforms-2/#ctm)
+        that yields the "current transformation matrix". It is used e.g. in
+        RenderLayer::updateTransform() to compute the layer transformation
+        matrix, that's used for rendering.
+
+        A simple way to support SVG transformations to re-use the same algorithm
+        is to add a new optional parameter to applyTransform():
+
+            "WTF::Function<AffineTransform()>&& externalAffineTransformationSource"
+
+        It allows callers to supply a function that returns a (2D) transformation matrix
+        that is used instead of the CSS 'transform' property in step 7) of
+        the algorithm -- while keeping all others steps the same. This will
+        be used by LBSE in follow-up patches, to provide the SVG 2D CTM
+        as input to this function.
+
+        An implementation of RenderSVGShape::applyTransform() that either uses
+        CSS transforms if present or SVG transforms as fallback is nicely encapsulated:
+
+            "style().applyTransform(transform, referenceBox, options, [&element = graphicsElement()] { return element.animatedLocalTransform(); });"
+
+        where 'transform' is the resulting 'TransformationMatrix',
+        'referenceBox' is the CSS reference box (influenced by the choice of 'transform-box'),
+        'options' whether to include 'transform-origin' & related in CTM or not, followed
+        by a lambda that computes the SVG 2D CTM, on-demand. The function is only evaluated
+        if CSS transforms are absent. Therefore this patch doesn't induce any runtime penalty
+        for non-SVG code paths.
+
+        Covered by existing tests, no change in behaviour.
+
+        * platform/graphics/transforms/TransformationMatrix.cpp:
+        (WebCore::TransformationMatrix::multiplyAffineTransform): Add multiply() variation that takes an AffineTransform.
+        * platform/graphics/transforms/TransformationMatrix.h:
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::applyTransform const):
+        * rendering/style/RenderStyle.h:
+        (WebCore::RenderStyle::applyTransform):
+
 2022-03-07  Nikolas Zimmermann  <nzimmermann@igalia.com>
 
         Unify 'transform-box' reference box computation

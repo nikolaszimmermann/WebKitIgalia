@@ -1533,6 +1533,17 @@ TransformationMatrix& TransformationMatrix::multiply(const TransformationMatrix&
     return *this;
 }
 
+TransformationMatrix& TransformationMatrix::multiplyAffineTransform(const AffineTransform& mat)
+{
+    if (mat.isIdentity())
+        return *this;
+
+    if (mat.isIdentityOrTranslation())
+        return translate(mat.e(), mat.f());
+
+    return multiply(mat.toTransformationMatrix());
+}
+
 void TransformationMatrix::multVecMatrix(double x, double y, double& resultX, double& resultY) const
 {
     resultX = m_matrix[3][0] + x * m_matrix[0][0] + y * m_matrix[1][0];
