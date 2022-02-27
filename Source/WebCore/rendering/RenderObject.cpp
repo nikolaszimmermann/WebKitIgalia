@@ -1976,6 +1976,14 @@ void RenderObject::setHasOutlineAutoAncestor(bool hasOutlineAutoAncestor)
         ensureRareData().setHasOutlineAutoAncestor(hasOutlineAutoAncestor);
 }
 
+#if ENABLE(LAYER_BASED_SVG_ENGINE)
+void RenderObject::setHasSVGTransform(bool hasSVGTransform)
+{
+    if (hasSVGTransform || hasRareData())
+        ensureRareData().setHasSVGTransform(hasSVGTransform);
+}
+#endif
+
 void RenderObject::setPaintContainmentApplies(bool paintContainmentApplies)
 {
     if (paintContainmentApplies || hasRareData())
