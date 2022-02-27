@@ -552,6 +552,9 @@ static bool canCreateStackingContext(const RenderLayer& layer)
 {
     auto& renderer = layer.renderer();
     return renderer.hasTransformRelatedProperty()
+#if ENABLE(LAYER_BASED_SVG_ENGINE)
+        || renderer.hasSVGTransform()
+#endif
         || renderer.hasClipPath()
         || renderer.hasFilter()
         || renderer.hasMask()
@@ -1310,13 +1313,19 @@ static inline FloatRect computeReferenceBox(const RenderLayerModelObject& render
 
 static inline void updateTransformFromStyle(TransformationMatrix& transform, const RenderLayerModelObject& renderer, const RenderStyle& style, OptionSet<RenderStyle::TransformOperationOption> options)
 {
-    FloatRect referenceBox;
+    auto referenceBox = renderer.transformReferenceBoxRect();
 
-    // FIXME: [LBSE] Upstream reference box computation for RenderSVGModelObject derived renderers
-    if (is<RenderBox>(renderer))
-        referenceBox = snapRectToDevicePixels(LayoutRect(renderer.transformReferenceBoxRect()), renderer.document().deviceScaleFactor());
+#if ENABLE(LAYER_BASED_SVG_ENGINE)
+    // No pixel snapping within SVG subtree.
+    if (renderer.isSVGLayerAwareRenderer() && renderer.document().settings().layerBasedSVGEngineEnabled()) {
+        renderer.applyTransform(transform, style, referenceBox, options);
+        makeMatrixRenderable(transform, renderer.view().compositor().canRender3DTransforms());
+        return;
+    }
+#endif
 
-    renderer.applyTransform(transform, style, referenceBox, options);
+    auto pixelSnappedReferenceBox = snapRectToDevicePixels(LayoutRect(referenceBox), renderer.document().deviceScaleFactor());
+    renderer.applyTransform(transform, style, pixelSnappedReferenceBox, options);
     makeMatrixRenderable(transform, renderer.view().compositor().canRender3DTransforms());
 }
 
@@ -1353,22 +1362,16 @@ TransformationMatrix RenderLayer::currentTransform(OptionSet<RenderStyle::Transf
     if (!m_transform)
         return { };
 
-    // FIXME: [LBSE] Upstream transform support for RenderSVGModelObject derived renderers
-    if (!is<RenderBox>(renderer()))
-        return { };
-
-    auto& renderBox = downcast<RenderBox>(renderer());
-
     // m_transform includes transform-origin and is affected by the choice of the transform-box.
     // Therefore we can only use the cached m_transform, if the animation doesn't alter transform-box or excludes transform-origin.
 
     // Query the animatedStyle() to obtain the current transformation, when accelerated transform animations are running.
-    auto styleable = Styleable::fromRenderer(renderBox);
+    auto styleable = Styleable::fromRenderer(renderer());
     if ((styleable && styleable->isRunningAcceleratedTransformAnimation()) || !options.contains(RenderStyle::TransformOperationOption::TransformOrigin)) {
-        std::unique_ptr<RenderStyle> animatedStyle = renderBox.animatedStyle();
+        std::unique_ptr<RenderStyle> animatedStyle = renderer().animatedStyle();
 
         TransformationMatrix transform;
-        updateTransformFromStyle(transform, renderBox, *animatedStyle, options);
+        updateTransformFromStyle(transform, renderer(), *animatedStyle, options);
         return transform;
     }
 
