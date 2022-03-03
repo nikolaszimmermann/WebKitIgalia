@@ -1450,6 +1450,7 @@ set(WebCore_PRIVATE_FRAMEWORK_HEADERS
     platform/graphics/DisplayUpdate.h
     platform/graphics/DrawGlyphsRecorder.h
     platform/graphics/FloatLine.h
+    platform/graphics/FloatOrLayoutRect.h
     platform/graphics/FloatPoint.h
     platform/graphics/FloatPoint3D.h
     platform/graphics/FloatQuad.h
