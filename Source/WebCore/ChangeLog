@@ -1,5 +1,57 @@
 2022-03-10  Nikolas Zimmermann  <nzimmermann@igalia.com>
 
+        Unify 'transform-box' reference box computation
+        https://bugs.webkit.org/show_bug.cgi?id=237554
+
+        Reviewed by NOBODY (OOPS!).
+
+        Currently the code to compute the reference box, according to the CSS 'transform-box'
+        property is sprinkled over various places: CSSComputedStyleDeclaration, SVGRenderSupport,
+        RenderBox, parts in RenderLayer.
+
+        Cleanup and unify the code in a single place: a new 'referenceBoxRect()'  method implementing
+        the computation for both SVG/HTML, where the SVG code lives in RenderElement (the only shared
+        base class between legacy SVG/LBSE) and the HTML code in RenderBox. The HTML/CSS implementation
+        was already contained in RenderBox::referenceBox() and was renamed to referenceBoxRect() to follow
+        the naming convention for the other CSS box geoemtry helpers such as contentBoxRect(),
+        borderBoxRect(), etc.
+
+        Remove code from SVGRenderSupport/CSSComputedStyleDeclaration that can now use the shared logic.
+
+        Covered by existing tests, no change in behaviour.
+
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::computedTransform): Use the renderers transformReferenceBoxRect() instead of the static helper function transformReferenceBox().
+        (WebCore::ComputedStyleExtractor::valueForPropertyInStyle): Ditto.
+        (WebCore::transformReferenceBox): Deleted. RenderElement::transformReferenceBoxRect() provides the same logic in a generic way.
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::referenceBoxRect const): Rename referenceBox() to referenceBoxRect() and return FloatRect instead of LayoutRect.
+        LBSE wants to re-use the logic but without pixel snapping within the SVG render tree. All callers were adapted to the new return type.
+        (WebCore::RenderBox::hitTestClipPath const): Adapt to referenceBox() -> referenceBoxRect() renaming.
+        (WebCore::RenderBox::referenceBox const): Deleted.
+        * rendering/RenderBox.h: Adapt to referenceBox() -> referenceBoxRect() renaming
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::referenceBoxRect const): Add referenceBoxRect() implementation for SVG renderers. The common base-class for
+        all SVG renderers is RenderElement in the legacy SVG engine and RenderLayerModelObject in LBSE. To share the code between both SVG
+        implementations it has to be placed in RenderElement -- to be moved to RenderLayerModelObject, once LBSE is the only SVG engine.
+        * rendering/RenderElement.h:
+        (WebCore::RenderElement::transformReferenceBoxRect const): Add new helper function which invokes referenceBoxRect() using
+        transformBoxToCSSBoxType(style().transformBox()). Whenever transform-box support is necessary, this method shall be used.
+        * rendering/RenderLayer.cpp: Use the new transformReferenceBoxRect() where possible.
+        (WebCore::RenderLayer::perspectiveTransform const):
+        (WebCore::RenderLayer::perspectiveOrigin const):
+        (WebCore::computeReferenceBox):
+        (WebCore::RenderLayer::computeClipPath const):
+        (WebCore::RenderLayer::setupClipPath):
+        (WebCore::computeReferenceRectFromBox): Deleted.
+        * rendering/svg/SVGRenderSupport.cpp:
+        (WebCore::SVGRenderSupport::transformReferenceBox): Deleted. RenderElement::transformReferenceBoxRect() provides the same logic in a generic way.
+        * rendering/svg/SVGRenderSupport.h: Ditto.
+        * svg/SVGGraphicsElement.cpp:
+        (WebCore::SVGGraphicsElement::animatedLocalTransform const): Use the renderers transformReferenceBoxRect() instead of SVGRenderSupport::transformReferenceBox().
+
+2022-03-10  Nikolas Zimmermann  <nzimmermann@igalia.com>
+
         Cleanup RenderLayer::currentTransform()
         https://bugs.webkit.org/show_bug.cgi?id=237553
 
