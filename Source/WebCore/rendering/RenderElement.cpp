@@ -78,6 +78,7 @@
 #include "RenderView.h"
 #include "SVGElementTypeHelpers.h"
 #include "SVGImage.h"
+#include "SVGLengthContext.h"
 #include "SVGRenderSupport.h"
 #include "Settings.h"
 #include "ShadowRoot.h"
@@ -2387,6 +2388,40 @@ Overflow RenderElement::effectiveOverflowY() const
     if (paintContainmentApplies() && overflowY == Overflow::Visible)
         return Overflow::Clip;
     return overflowY;
+}
+
+// https://www.w3.org/TR/css-transforms-1/#transform-box
+FloatOrLayoutRect RenderElement::referenceBoxRect(CSSBoxType boxType) const
+{
+    // CSS box model code is implemented in RenderBox::referenceBoxRect().
+
+    // For the legacy SVG engine, RenderElement is the only class that's
+    // present in the ancestor chain of all SVG renderers. In LBSE the
+    // common class is RenderLayerModelObject. Once the legacy SVG engine
+    // is removed this function should be moved to RenderLayerModelObject.
+    // As this method is used by both SVG engines, we need to place it
+    // here in RenderElement, as temporary solution.
+    if (!is<SVGElement>(element()))
+        return LayoutRect();
+
+    switch (boxType) {
+    case CSSBoxType::BoxMissing:
+    case CSSBoxType::ContentBox:
+    case CSSBoxType::PaddingBox:
+    case CSSBoxType::FillBox:
+        return objectBoundingBox();
+    case CSSBoxType::BorderBox:
+    case CSSBoxType::MarginBox:
+    case CSSBoxType::StrokeBox:
+        return strokeBoundingBox();
+    case CSSBoxType::ViewBox:
+        FloatSize viewportSize;
+        SVGLengthContext(downcast<SVGElement>(element())).determineViewport(viewportSize);
+        return FloatRect({ }, viewportSize);
+    }
+
+    ASSERT_NOT_REACHED();
+    return FloatRect();
 }
 
 }

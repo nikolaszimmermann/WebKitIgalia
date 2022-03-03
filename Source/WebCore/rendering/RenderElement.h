@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "FloatOrLayoutRect.h"
 #include "HitTestRequest.h"
 #include "LengthFunctions.h"
 #include "RenderObject.h"
@@ -257,6 +258,13 @@ public:
     virtual void animationPaused(double /* timeOffset */, const String& /* name */) { }
     virtual void animationFinished(const String& /* name */) { }
     virtual void transformRelatedPropertyDidChange() { }
+
+    // https://www.w3.org/TR/css-transforms-1/#transform-box
+    FloatOrLayoutRect transformReferenceBoxRect(const RenderStyle& style) const { return referenceBoxRect(transformBoxToCSSBoxType(style.transformBox())); }
+    FloatOrLayoutRect transformReferenceBoxRect() const { return transformReferenceBoxRect(style()); }
+
+    // https://www.w3.org/TR/css-transforms-1/#reference-box
+    virtual FloatOrLayoutRect referenceBoxRect(CSSBoxType) const;
 
     virtual void suspendAnimations(MonotonicTime = MonotonicTime()) { }
     std::unique_ptr<RenderStyle> animatedStyle();

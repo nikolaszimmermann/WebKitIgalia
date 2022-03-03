@@ -1296,21 +1296,18 @@ void RenderLayer::dirtyAncestorChainHasBlendingDescendants()
 }
 #endif
 
-static inline LayoutRect computeReferenceRectFromBox(const RenderBox& box, CSSBoxType boxType, const LayoutSize& offsetFromRoot)
+static inline FloatOrLayoutRect computeReferenceBox(const RenderLayerModelObject& renderer, CSSBoxType boxType, const LayoutSize& offsetFromRoot, const LayoutRect& rootRelativeBounds)
 {
-    auto referenceBox = box.referenceBox(boxType);
-    referenceBox.move(offsetFromRoot);
-    return referenceBox;
-}
+    // FIXME: [LBSE] Upstream transform support for RenderSVGModelObject derived renderers
 
-static inline LayoutRect computeReferenceBox(const RenderObject& renderer, CSSBoxType boxType, const LayoutSize& offsetFromRoot, const LayoutRect& rootRelativeBounds)
-{
     // FIXME: Support different reference boxes for inline content.
     // https://bugs.webkit.org/show_bug.cgi?id=129047
     if (!renderer.isBox())
         return rootRelativeBounds;
     
-    return computeReferenceRectFromBox(downcast<RenderBox>(renderer), boxType, offsetFromRoot);
+    auto referenceBox = renderer.referenceBoxRect(boxType);
+    referenceBox.move(offsetFromRoot);
+    return referenceBox;
 }
 
 void RenderLayer::updateTransform()
@@ -1332,12 +1329,8 @@ void RenderLayer::updateTransform()
     if (hasTransform) {
         m_transform->makeIdentity();
 
-        // FIXME: [LBSE] Upstream reference box computation for RenderSVGModelObject derived renderers
-        FloatRect referenceBox;
-        if (is<RenderBox>(renderer()))
-            referenceBox = snapRectToDevicePixels(downcast<RenderBox>(renderer()).referenceBox(transformBoxToCSSBoxType(renderer().style().transformBox())), renderer().document().deviceScaleFactor());
-
-        renderer().applyTransform(*m_transform, referenceBox);
+        auto referenceBoxRectForPainting = renderer().transformReferenceBoxRect().rectForPainting(renderer().document().deviceScaleFactor());
+        renderer().applyTransform(*m_transform, referenceBoxRectForPainting);
         makeMatrixRenderable(*m_transform, canRender3DTransforms());
     }
 
@@ -1366,10 +1359,10 @@ TransformationMatrix RenderLayer::currentTransform(OptionSet<RenderStyle::Transf
     auto styleable = Styleable::fromRenderer(renderBox);
     if ((styleable && styleable->isRunningAcceleratedTransformAnimation()) || !options.contains(RenderStyle::TransformOperationOption::TransformOrigin)) {
         std::unique_ptr<RenderStyle> animatedStyle = renderBox.animatedStyle();
-        auto pixelSnappedBorderRect = snapRectToDevicePixels(renderBox.referenceBox(transformBoxToCSSBoxType(animatedStyle->transformBox())), renderBox.document().deviceScaleFactor());
+        auto referenceBoxRectForPainting = renderBox.transformReferenceBoxRect().rectForPainting(renderBox.document().deviceScaleFactor());
 
         TransformationMatrix transform;
-        animatedStyle->applyTransform(transform, pixelSnappedBorderRect, options);
+        animatedStyle->applyTransform(transform, referenceBoxRectForPainting, options);
 
         makeMatrixRenderable(transform, canRender3DTransforms());
         return transform;
@@ -1801,11 +1794,11 @@ TransformationMatrix RenderLayer::perspectiveTransform(const LayoutRect& layerRe
         return { };
 
     auto deviceScaleFactor = renderBox.document().deviceScaleFactor();
-    auto referenceBox = renderBox.referenceBox(transformBoxToCSSBoxType(style.transformBox()));
-    auto pixelSnappedReferenceBox = snapRectToDevicePixels(referenceBox, deviceScaleFactor);
+    auto referenceBoxRectForPainting = renderBox.transformReferenceBoxRect().rectForPainting(deviceScaleFactor);
+    // FIXME: [LBSE] Avoid pixel snapping in SVG subtree.
     auto snappedLayerRect = snapRectToDevicePixels(layerRect, deviceScaleFactor);
 
-    auto perspectiveOrigin = pixelSnappedReferenceBox.location() - toFloatSize(snappedLayerRect.location()) + floatPointForLengthPoint(style.perspectiveOrigin(), pixelSnappedReferenceBox.size());
+    auto perspectiveOrigin = referenceBoxRectForPainting.location() - toFloatSize(snappedLayerRect.location()) + floatPointForLengthPoint(style.perspectiveOrigin(), referenceBoxRectForPainting.size());
 
     // A perspective origin of 0,0 makes the vanishing point in the center of the element.
     // We want it to be in the top-left, so subtract half the height and width.
@@ -1823,6 +1816,7 @@ FloatPoint RenderLayer::perspectiveOrigin() const
 {
     if (!renderer().hasTransformRelatedProperty())
         return { };
+    // FIXME: This uses the wrong, transform-box unaware, geometry.
     return floatPointForLengthPoint(renderer().style().perspectiveOrigin(), rendererBorderBoxRect().size());
 }
 
@@ -3212,22 +3206,8 @@ std::pair<Path, WindRule> RenderLayer::computeClipPath(const LayoutSize& offsetF
 
     if (is<ShapePathOperation>(*style.clipPath())) {
         auto& clipPath = downcast<ShapePathOperation>(*style.clipPath());
-
-        LayoutRect referenceBox;
-        if (is<RenderBox>(renderer())) {
-            referenceBox = downcast<RenderBox>(renderer()).referenceBox(clipPath.referenceBox());
-            referenceBox.move(offsetFromRoot);
-#if ENABLE(LAYER_BASED_SVG_ENGINE)
-        } else if (is<RenderSVGModelObject>(renderer())) {
-            // FIXME: [LBSE] Upstream clipping support for RenderSVGModelObject derived renderers
-#endif
-        } else {
-            // Reference box for inlines is not well defined: https://github.com/w3c/csswg-drafts/issues/6383
-            referenceBox = rootRelativeBoundsForNonBoxes;
-        }
-
-        auto snappedReferenceBox = snapRectToDevicePixels(referenceBox, deviceScaleFactor);
-        return { clipPath.pathForReferenceRect(snappedReferenceBox), clipPath.windRule() };
+        auto referenceBoxRect = computeReferenceBox(renderer(), clipPath.referenceBox(), offsetFromRoot, rootRelativeBoundsForNonBoxes);
+        return { clipPath.pathForReferenceRect(referenceBoxRect.rectForPainting(deviceScaleFactor)), clipPath.windRule() };
     }
 
     if (is<BoxPathOperation>(*style.clipPath()) && is<RenderBox>(renderer())) {
@@ -3269,16 +3249,20 @@ void RenderLayer::setupClipPath(GraphicsContext& context, GraphicsContextStateSa
             // Use the border box as the reference box, even though this is not clearly specified: https://github.com/w3c/csswg-drafts/issues/5786.
             // clippedContentBounds is used as the reference box for inlines, which is also poorly specified: https://github.com/w3c/csswg-drafts/issues/6383.
             auto referenceBox = computeReferenceBox(renderer(), CSSBoxType::BorderBox, offsetFromRoot, clippedContentBounds);
-            auto snappedReferenceBox = snapRectToDevicePixels(referenceBox, renderer().document().deviceScaleFactor());
-            auto offset = snappedReferenceBox.location();
 
+            FloatRect referenceBoxRect = referenceBox;
+            referenceBoxRect.setLocation({ });
+
+            auto referenceBoxRectForPainting = referenceBox.rectForPainting(renderer().document().deviceScaleFactor());
+            auto offset = referenceBoxRectForPainting.location();
+
+            // FIXME: [LBSE] Avoid pixel snapping in SVG subtree.
             auto snappedClippingBounds = snapRectToDevicePixels(clippedContentBounds, renderer().document().deviceScaleFactor());
             snappedClippingBounds.moveBy(-offset);
 
             stateSaver.save();
             context.translate(offset);
-            FloatRect clipPathReferenceBox { { }, referenceBox.size() };
-            clipperRenderer->applyClippingToContext(context, renderer(), clipPathReferenceBox, snappedClippingBounds, renderer().style().effectiveZoom());
+            clipperRenderer->applyClippingToContext(context, renderer(), referenceBoxRect, snappedClippingBounds, renderer().style().effectiveZoom());
             context.translate(-offset);
         }
     }
