@@ -1,5 +1,51 @@
 2022-03-10  Nikolas Zimmermann  <nzimmermann@igalia.com>
 
+        Unify reference box / CTM computation in RenderLayer
+        https://bugs.webkit.org/show_bug.cgi?id=237701
+
+        Reviewed by NOBODY (OOPS!).
+
+        Extract the code that computes the reference box, obtains the CTM, applies pixel snapping, etc. into
+        a helper function to share the code between RenderLayer::updateTransform() / RenderLayer::currentTransform().
+
+        This simplifies the upcoming LBSE SVG transform support hat can be used later by LBSE to e.g. disable pixel snapping for the SVG subtree
+        in one place, instead of sprinkling LBSE code over multiple places.
+
+        Extend RenderLayerModelObject::applyTransform() to take an additional RenderStyle parameter,
+        that is used to access the CSS transform operations, instead of always querying the renderers
+        style(). RenderLayer::updateTransform() still passes the renderers style(), whereas
+        RenderLayer::currentTransform() passes the elements animatedStyle(), if an animation is running.
+
+        Covered by existing tests, no change in behaviour.
+
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::applyTransform const):
+        * rendering/RenderBox.h:
+        * rendering/RenderBoxModelObject.cpp:
+        (WebCore::RenderBoxModelObject::applyTransform const):
+        * rendering/RenderBoxModelObject.h:
+        * rendering/RenderLayer.cpp:
+        (WebCore::updateTransformFromStyle):
+        (WebCore::RenderLayer::updateTransform):
+        (WebCore::RenderLayer::currentTransform const):
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateTransform):
+        * rendering/RenderLayerModelObject.h:
+        * rendering/svg/RenderSVGModelObject.cpp:
+        (WebCore::RenderSVGModelObject::applyTransform const): Deleted.
+        * rendering/svg/RenderSVGModelObject.h:
+        * rendering/svg/RenderSVGRoot.cpp:
+        (WebCore::RenderSVGRoot::applyTransform const): Deleted.
+        * rendering/svg/RenderSVGRoot.h:
+        * rendering/svg/RenderSVGShape.cpp:
+        (WebCore::RenderSVGShape::applyTransform const):
+        * rendering/svg/RenderSVGShape.h:
+        * rendering/svg/RenderSVGTransformableContainer.cpp:
+        (WebCore::RenderSVGTransformableContainer::applyTransform const):
+        * rendering/svg/RenderSVGTransformableContainer.h:
+
+2022-03-10  Nikolas Zimmermann  <nzimmermann@igalia.com>
+
         Extract transform-origin handling out of RenderStyle::applyTransform()
         https://bugs.webkit.org/show_bug.cgi?id=237590
 
