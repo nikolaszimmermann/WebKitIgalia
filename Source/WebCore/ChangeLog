@@ -1,3 +1,39 @@
+2022-03-09  Nikolas Zimmermann  <nzimmermann@igalia.com>
+
+        Extract transform-origin handling out of RenderStyle::applyTransform()
+        https://bugs.webkit.org/show_bug.cgi?id=237590
+
+        Reviewed by NOBODY (OOPS!).
+
+        RenderStyle::applyTransform() implements the algorithm given in
+        CSS Transforms Module Level 2 (https://www.w3.org/TR/css-transforms-2/#ctm)
+        that yields the "current transformation matrix". It is used e.g. in
+        RenderLayer::updateTransform() to compute the layer transformation
+        matrix, that's used for rendering.
+
+        LBSE wants to re-use the same algorithm, interchanging the individual
+        CSS transform properties / the CSS transform property with an external
+        AffineTransform, representing the SVG 2D transform.
+
+        Therefore Split RenderStyle::applyTransform() into three methods:
+        applyTransformOrigin / applyCSSTransform / unapplyTransformOrigin.
+
+        LBSE can call applyTransformOrigin(), multiply the TransformationMatrix
+        with the given SVG 2D AffineTransform and call unapplyTransformOrigin().
+        The rest of the codebase remaings unchanged, since applyTransform() is kept as-is.
+
+        Covered by existing tests, no change in behaviour.
+
+        * platform/graphics/transforms/TransformationMatrix.cpp:
+        (WebCore::TransformationMatrix::multiplyAffineTransform):
+        * platform/graphics/transforms/TransformationMatrix.h:
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::applyTransformOrigin const):
+        (WebCore::RenderStyle::unapplyTransformOrigin):
+        (WebCore::RenderStyle::applyTransform const):
+        (WebCore::RenderStyle::applyCSSTransform const):
+        * rendering/style/RenderStyle.h:
+
 2022-03-07  Nikolas Zimmermann  <nzimmermann@igalia.com>
 
         Unify 'transform-box' reference box computation
