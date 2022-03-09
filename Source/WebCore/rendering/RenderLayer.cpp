@@ -1310,6 +1310,13 @@ static inline FloatOrLayoutRect computeReferenceBox(const RenderLayerModelObject
     return referenceBox;
 }
 
+void RenderLayer::updateTransformFromStyle(TransformationMatrix& transform, const RenderStyle& style, OptionSet<RenderStyle::TransformOperationOption> options) const
+{
+    auto referenceBoxRectForPainting = renderer().transformReferenceBoxRect().rectForPainting(renderer().document().deviceScaleFactor());
+    renderer().applyTransform(transform, style, referenceBoxRectForPainting, options);
+    makeMatrixRenderable(transform, canRender3DTransforms());
+}
+
 void RenderLayer::updateTransform()
 {
     bool hasTransform = renderer().hasTransform();
@@ -1328,10 +1335,7 @@ void RenderLayer::updateTransform()
     
     if (hasTransform) {
         m_transform->makeIdentity();
-
-        auto referenceBoxRectForPainting = renderer().transformReferenceBoxRect().rectForPainting(renderer().document().deviceScaleFactor());
-        renderer().applyTransform(*m_transform, referenceBoxRectForPainting);
-        makeMatrixRenderable(*m_transform, canRender3DTransforms());
+        updateTransformFromStyle(*m_transform, renderer().style(), RenderStyle::allTransformOperations);
     }
 
     if (had3DTransform != has3DTransform()) {
@@ -1359,12 +1363,8 @@ TransformationMatrix RenderLayer::currentTransform(OptionSet<RenderStyle::Transf
     auto styleable = Styleable::fromRenderer(renderBox);
     if ((styleable && styleable->isRunningAcceleratedTransformAnimation()) || !options.contains(RenderStyle::TransformOperationOption::TransformOrigin)) {
         std::unique_ptr<RenderStyle> animatedStyle = renderBox.animatedStyle();
-        auto referenceBoxRectForPainting = renderBox.transformReferenceBoxRect().rectForPainting(renderBox.document().deviceScaleFactor());
-
         TransformationMatrix transform;
-        animatedStyle->applyTransform(transform, referenceBoxRectForPainting, options);
-
-        makeMatrixRenderable(transform, canRender3DTransforms());
+        updateTransformFromStyle(transform, *animatedStyle, options);
         return transform;
     }
 
