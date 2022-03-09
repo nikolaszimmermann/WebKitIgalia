@@ -1308,6 +1308,23 @@ static inline FloatRect computeReferenceBox(const RenderLayerModelObject& render
     return referenceBox;
 }
 
+FloatRect RenderLayer::computePixelSnappedFloatRectIfNeeded(const FloatRect& rect) const
+{
+#if ENABLE(LAYER_BASED_SVG_ENGINE)
+    // No pixel snapping within SVG subtree.
+    if (renderer().isSVGLayerAwareRenderer() && renderer().document().settings().layerBasedSVGEngineEnabled())
+        return rect;
+#endif
+
+    return snapRectToDevicePixels(LayoutRect(rect), renderer().document().deviceScaleFactor());
+}
+
+void RenderLayer::updateTransformFromStyle(TransformationMatrix& transform, const RenderStyle& style, OptionSet<RenderStyle::TransformOperationOption> options) const
+{
+    renderer().applyTransform(transform, style, computePixelSnappedFloatRectIfNeeded(renderer().transformReferenceBoxRect()), options);
+    makeMatrixRenderable(transform, canRender3DTransforms());
+}
+
 void RenderLayer::updateTransform()
 {
     bool hasTransform = renderer().hasTransform();
@@ -1326,14 +1343,7 @@ void RenderLayer::updateTransform()
     
     if (hasTransform) {
         m_transform->makeIdentity();
-
-        // FIXME: [LBSE] Upstream reference box computation for RenderSVGModelObject derived renderers
-        FloatRect referenceBox;
-        if (is<RenderBox>(renderer()))
-            referenceBox = snapRectToDevicePixels(LayoutRect(downcast<RenderBox>(renderer()).transformReferenceBoxRect()), renderer().document().deviceScaleFactor());
-
-        renderer().applyTransform(*m_transform, referenceBox);
-        makeMatrixRenderable(*m_transform, canRender3DTransforms());
+        updateTransformFromStyle(*m_transform, renderer().style(), RenderStyle::allTransformOperations);
     }
 
     if (had3DTransform != has3DTransform()) {
@@ -1361,12 +1371,9 @@ TransformationMatrix RenderLayer::currentTransform(OptionSet<RenderStyle::Transf
     auto styleable = Styleable::fromRenderer(renderBox);
     if ((styleable && styleable->isRunningAcceleratedTransformAnimation()) || !options.contains(RenderStyle::TransformOperationOption::TransformOrigin)) {
         std::unique_ptr<RenderStyle> animatedStyle = renderBox.animatedStyle();
-        auto pixelSnappedBorderRect = snapRectToDevicePixels(LayoutRect(renderBox.transformReferenceBoxRect()), renderBox.document().deviceScaleFactor());
 
         TransformationMatrix transform;
-        animatedStyle->applyTransform(transform, pixelSnappedBorderRect, options);
-
-        makeMatrixRenderable(transform, canRender3DTransforms());
+        updateTransformFromStyle(transform, *animatedStyle, options);
         return transform;
     }
 
