@@ -1327,6 +1327,12 @@ FloatRect RenderLayer::transformReferenceBoxRectForPainting(const RenderStyle& s
     return { };
 }
 
+void RenderLayer::updateTransformFromStyle(TransformationMatrix& transform, const RenderStyle& style, OptionSet<RenderStyle::TransformOperationOption> options) const
+{
+    renderer().applyTransform(*m_transform, style, transformReferenceBoxRectForPainting(style), options);
+    makeMatrixRenderable(transform, canRender3DTransforms());
+}
+
 void RenderLayer::updateTransform()
 {
     bool hasTransform = renderer().hasTransform();
@@ -1345,8 +1351,7 @@ void RenderLayer::updateTransform()
     
     if (hasTransform) {
         m_transform->makeIdentity();
-        renderer().applyTransform(*m_transform, transformReferenceBoxRectForPainting(renderer().style()));
-        makeMatrixRenderable(*m_transform, canRender3DTransforms());
+        updateTransformFromStyle(*m_transform, renderer().style(), RenderStyle::allTransformOperations);
     }
 
     if (had3DTransform != has3DTransform()) {
@@ -1376,9 +1381,7 @@ TransformationMatrix RenderLayer::currentTransform(OptionSet<RenderStyle::Transf
         std::unique_ptr<RenderStyle> animatedStyle = renderBox.animatedStyle();
 
         TransformationMatrix transform;
-        animatedStyle->applyTransform(transform, transformReferenceBoxRectForPainting(*animatedStyle), options);
-
-        makeMatrixRenderable(transform, canRender3DTransforms());
+        updateTransformFromStyle(transform, *animatedStyle, options);
         return transform;
     }
 
