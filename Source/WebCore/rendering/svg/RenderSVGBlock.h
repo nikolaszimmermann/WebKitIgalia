@@ -48,6 +48,9 @@ private:
 
     void styleDidChange(StyleDifference, const RenderStyle* oldStyle) final;
 
+    LayoutPoint currentSVGLayoutLocation() const final { return location(); }
+    void setCurrentSVGLayoutLocation(const LayoutPoint& location) final { setLocation(location); }
+
     LayoutRect clippedOverflowRect(const RenderLayerModelObject* repaintContainer, VisibleRectContext) const final;
     std::optional<FloatRect> computeFloatVisibleRectInContainer(const FloatRect&, const RenderLayerModelObject* container, VisibleRectContext) const final;
     std::optional<LayoutRect> computeVisibleRectInContainer(const LayoutRect&, const RenderLayerModelObject* container, VisibleRectContext) const final;

@@ -51,6 +51,9 @@ private:
     FloatRect strokeBoundingBox() const final;
     FloatRect repaintRectInLocalCoordinates() const final;
 
+    LayoutPoint currentSVGLayoutLocation() const final { return { }; }
+    void setCurrentSVGLayoutLocation(const LayoutPoint&) final { ASSERT_NOT_REACHED(); }
+
     LayoutRect clippedOverflowRect(const RenderLayerModelObject* repaintContainer, VisibleRectContext) const final;
     std::optional<FloatRect> computeFloatVisibleRectInContainer(const FloatRect&, const RenderLayerModelObject* container, VisibleRectContext) const final;
     void mapLocalToContainer(const RenderLayerModelObject* ancestorContainer, TransformState&, OptionSet<MapCoordinatesMode>, bool* wasFixed) const final;
