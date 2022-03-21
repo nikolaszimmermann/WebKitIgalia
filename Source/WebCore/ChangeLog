@@ -1,3 +1,59 @@
+2022-04-04  Nikolas Zimmermann  <nzimmermann@igalia.com>
+
+        Unify 'transform-box' reference box computation
+        https://bugs.webkit.org/show_bug.cgi?id=237554
+
+        Reviewed by NOBODY (OOPS!).
+
+        Currently the code to compute the reference box, according to the CSS 'transform-box'
+        property is sprinkled over various places: CSSComputedStyleDeclaration, SVGRenderSupport,
+        RenderBox, parts in RenderLayer.
+
+        Cleanup and unify the code in a single place: a new pair of 'referenceBoxLayoutRect()' and
+        'referenceBoxFloatRect()' methods  implementing the computation for both HTML/CSS and SVG.
+        The HTML/CSS code remains in RenderBox, the new SVG code was moved from SVGRenderSupport
+        into RenderElement (the only shared base class between legacy SVG/LBSE).
+
+        Remove code from SVGRenderSupport/CSSComputedStyleDeclaration that can now use the shared logic.
+
+        Covered by existing tests, no change in behaviour.
+
+        * css/CSSComputedStyleDeclaration.cpp:
+        (WebCore::computedTransform):
+        (WebCore::ComputedStyleExtractor::valueForPropertyInStyle):
+        (WebCore::transformReferenceBox): Deleted.
+        * rendering/RenderBox.cpp:
+        (WebCore::RenderBox::referenceBoxLayoutRect const):
+        (WebCore::RenderBox::hitTestClipPath const):
+        (WebCore::RenderBox::referenceBox const): Deleted.
+        * rendering/RenderBox.h:
+        * rendering/RenderElement.cpp:
+        (WebCore::RenderElement::referenceBoxFloatRect const):
+        * rendering/RenderElement.h:
+        (WebCore::RenderElement::transformReferenceBoxFloatRect const):
+        (WebCore::RenderElement::transformReferenceBoxLayoutRect const):
+        (WebCore::RenderElement::transformReferenceBoxRect const):
+        (WebCore::RenderElement::referenceBoxLayoutRect const):
+        (WebCore::RenderElement::referenceBoxRect const):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::referenceBoxRect const):
+        (WebCore::RenderLayer::referenceBoxRectForPainting const):
+        (WebCore::RenderLayer::transformReferenceBoxRectForPainting const):
+        (WebCore::RenderLayer::updateTransform):
+        (WebCore::RenderLayer::currentTransform const):
+        (WebCore::RenderLayer::perspectiveTransform const):
+        (WebCore::RenderLayer::perspectiveOrigin const):
+        (WebCore::RenderLayer::computeClipPath const):
+        (WebCore::RenderLayer::setupClipPath):
+        (WebCore::computeReferenceRectFromBox): Deleted.
+        (WebCore::computeReferenceBox): Deleted.
+        * rendering/RenderLayer.h:
+        * rendering/svg/SVGRenderSupport.cpp:
+        (WebCore::SVGRenderSupport::transformReferenceBox): Deleted.
+        * rendering/svg/SVGRenderSupport.h:
+        * svg/SVGGraphicsElement.cpp:
+        (WebCore::SVGGraphicsElement::animatedLocalTransform const):
+
 2022-04-04  Devin Rousso  <drousso@apple.com>
 
         [Apple Pay] buttons should be localized based on the system if not specified by the HTML

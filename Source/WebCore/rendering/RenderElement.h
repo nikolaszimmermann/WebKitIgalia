@@ -258,6 +258,37 @@ public:
     virtual void animationFinished(const String& /* name */) { }
     virtual void transformRelatedPropertyDidChange() { }
 
+    // https://www.w3.org/TR/css-transforms-1/#transform-box
+    std::optional<FloatRect> transformReferenceBoxFloatRect(const RenderStyle& style) const { return referenceBoxFloatRect(transformBoxToCSSBoxType(style.transformBox())); }
+    std::optional<FloatRect> transformReferenceBoxFloatRect() const { return transformReferenceBoxFloatRect(style()); }
+
+    std::optional<LayoutRect> transformReferenceBoxLayoutRect(const RenderStyle& style) const { return referenceBoxLayoutRect(transformBoxToCSSBoxType(style.transformBox())); }
+    std::optional<LayoutRect> transformReferenceBoxLayoutRect() const { return transformReferenceBoxLayoutRect(style()); }
+
+    FloatRect transformReferenceBoxRect(const RenderStyle& style) const
+    {
+        if (auto referenceBoxRect = transformReferenceBoxLayoutRect(style))
+            return referenceBoxRect.value();
+        if (auto referenceBoxRect = transformReferenceBoxFloatRect(style))
+            return referenceBoxRect.value();
+        return { };
+    }
+
+    FloatRect transformReferenceBoxRect() const { return transformReferenceBoxRect(style()); }
+
+    // https://www.w3.org/TR/css-transforms-1/#reference-box
+    virtual std::optional<LayoutRect> referenceBoxLayoutRect(CSSBoxType) const { return std::nullopt; }
+    virtual std::optional<FloatRect> referenceBoxFloatRect(CSSBoxType) const;
+
+    FloatRect referenceBoxRect(CSSBoxType boxType) const
+    {
+        if (auto referenceBoxRect = referenceBoxLayoutRect(boxType))
+            return referenceBoxRect.value();
+        if (auto referenceBoxRect = referenceBoxFloatRect(boxType))
+            return referenceBoxRect.value();
+        return { };
+    }
+
     virtual void suspendAnimations(MonotonicTime = MonotonicTime()) { }
     std::unique_ptr<RenderStyle> animatedStyle();
 

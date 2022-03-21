@@ -771,9 +771,8 @@ LayoutPoint RenderBox::contentBoxLocation() const
     return { borderLeft() + paddingLeft() + scrollbarSpace, borderTop() + paddingTop() };
 }
 
-LayoutRect RenderBox::referenceBox(CSSBoxType boxType) const
+std::optional<LayoutRect> RenderBox::referenceBoxLayoutRect(CSSBoxType boxType) const
 {
-    LayoutRect referenceBox;
     switch (boxType) {
     case CSSBoxType::ContentBox:
     case CSSBoxType::FillBox:
@@ -789,7 +788,9 @@ LayoutRect RenderBox::referenceBox(CSSBoxType boxType) const
     case CSSBoxType::BoxMissing:
         return borderBoxRect();
     }
-    return { };
+
+    ASSERT_NOT_REACHED();
+    return std::nullopt;
 }
 
 IntRect RenderBox::absoluteContentBox() const
@@ -1465,8 +1466,8 @@ bool RenderBox::hitTestClipPath(const HitTestLocation& hitTestLocation, const La
     switch (style().clipPath()->type()) {
     case PathOperation::Shape: {
         auto& clipPath = downcast<ShapePathOperation>(*style().clipPath());
-        auto referenceBoxRect = referenceBox(clipPath.referenceBox());
-        if (!clipPath.pathForReferenceRect(referenceBoxRect).contains(hitTestLocationInLocalCoordinates, clipPath.windRule()))
+        auto referenceRect = referenceBoxLayoutRect(clipPath.referenceBox()).value();
+        if (!clipPath.pathForReferenceRect(referenceRect).contains(hitTestLocationInLocalCoordinates, clipPath.windRule()))
             return false;
         break;
     }
