@@ -698,6 +698,12 @@ public:
     WEBCORE_EXPORT IntRect absoluteBoundingBox() const;
     // Device pixel snapped bounding box relative to the root. absoluteBoundingBox() callers will be directed to this.
     FloatRect absoluteBoundingBoxForPainting() const;
+    // 'reference box' according to CSS Transforms Module Level 1.
+    FloatRect referenceBoxRect(CSSBoxType, const LayoutSize& offsetFromRoot, const LayoutRect& rootRelativeBounds) const;
+    // Device pixel snapped 'reference box' according to CSS Transforms Module Level 1.
+    FloatRect referenceBoxRectForPainting(CSSBoxType, const LayoutSize& offsetFromRoot, const LayoutRect& rootRelativeBounds) const;
+    // Device pixel snapped 'transform reference box' according to CSS Transforms Module Level 1.
+    FloatRect transformReferenceBoxRectForPainting(const RenderStyle&) const;
 
     // Bounds used for layer overlap testing in RenderLayerCompositor.
     LayoutRect overlapBounds() const;
