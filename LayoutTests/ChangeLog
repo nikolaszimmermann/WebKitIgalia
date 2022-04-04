@@ -1,3 +1,23 @@
+2022-04-08  Nikolas Zimmermann  <nzimmermann@igalia.com>
+
+        Perspective should not be affected by transform-origin
+        https://bugs.webkit.org/show_bug.cgi?id=211787
+        <rdar://problem/63143806>
+
+        Reviewed by NOBODY (OOPS!).
+
+        Update expectation: anchor points in the GraphicsLayer tree dumps have changed.
+
+        Unskip imported/w3c/web-platform-tests/css/css-transforms/animation/transform-box-will-change-transform-layer.html
+        on all platforms: 'transform-box' changes now propertly trigger GraphicsLayer geometry updates.
+
+        * compositing/tiling/coverage-adjustment-secondary-quad-mapping-expected.txt:
+        * compositing/tiling/perspective-on-scroller-tile-coverage-expected.txt:
+        * platform/glib/TestExpectations:
+        * platform/ios/TestExpectations:
+        * platform/mac/TestExpectations:
+        * platform/win/TestExpectations:
+
 2022-04-08  Carlos Garcia Campos  <cgarcia@igalia.com>
 
         Incorrect CORP/COEP check in 304 responses
