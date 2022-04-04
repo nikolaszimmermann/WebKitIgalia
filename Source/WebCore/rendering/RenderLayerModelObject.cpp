@@ -345,8 +345,10 @@ void RenderLayerModelObject::applySVGTransform(TransformationMatrix& transform, 
         return;
 
     FloatPoint3D originTranslate;
-    if (options.contains(RenderStyle::TransformOperationOption::TransformOrigin) && affectedByTransformOrigin)
-        originTranslate = style.applyTransformOrigin(transform, boundingBox);
+    if (options.contains(RenderStyle::TransformOperationOption::TransformOrigin) && affectedByTransformOrigin) {
+        originTranslate = style.computeTransformOrigin(boundingBox);
+        style.applyTransformOrigin(transform, originTranslate);
+    }
 
     // CSS transforms take precedence over SVG transforms.
     if (hasCSSTransform)
