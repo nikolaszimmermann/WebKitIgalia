@@ -1,5 +1,61 @@
 2022-04-07  Nikolas Zimmermann  <nzimmermann@igalia.com>
 
+        Perspective should not be affected by transform-origin
+        https://bugs.webkit.org/show_bug.cgi?id=211787
+        <rdar://problem/63143806>
+
+        Reviewed by NOBODY (OOPS!).
+
+        Fix a number of issues related to perspective handling:
+        - 'perspective-origin' always used the border-box as reference box, when resolving
+           length percentages, ignoring the choice of 'transform-box'. Fix that.
+
+        - Proper 'transform-box' awareness throghout RenderLayerBacking (few places with issue, e.g. perspectiveOrigin()
+          affecting repaint & coverage rects)
+
+        - The chosen perspective transformation was not invariant under 'transform-origin' / 'transform-box'
+          changes of the element A, that defines the perspective. However the perspective set on element A
+          should only affect the rendering of its descendants: the choice of the 'transform-origin' / 'transform-box'
+          of element A should have no effect on the perspective established for the children.
+
+        - Assure that 'transform-box' changes trigger GraphicLayer geometry updates: this fully fixes 'transform-box'
+          support for composited elements, and brings its state on-par with non-composited elements (both support all kind of
+          transform-box / transform-origin combinations on regular layers, clipped layers, scrolled layers).
+
+          This fixes the (not yet upstreamed) test web-platform-tests/css/css-transforms/animation/transform-box-will-change-transform-layer.html.
+
+        Prepared a new WPT test (see above) for upstreaming.
+
+        * animation/KeyframeEffect.cpp:
+        (WebCore::KeyframeEffect::computeTransformedExtentViaTransformList const):
+        * rendering/RenderLayer.cpp:
+        (WebCore::RenderLayer::perspectiveTransform const):
+        (WebCore::RenderLayer::transformOriginForPainting const):
+        (WebCore::RenderLayer::perspectiveOrigin const):
+        * rendering/RenderLayer.h:
+        * rendering/RenderLayerBacking.cpp:
+        (WebCore::RenderLayerBacking::updateTransform):
+        (WebCore::RenderLayerBacking::updateChildrenTransformAndAnchorPoint):
+        (WebCore::RenderLayerBacking::computeTransformOriginForPainting const): Deleted.
+        * rendering/RenderLayerBacking.h:
+        * rendering/RenderLayerCompositor.cpp:
+        (WebCore::recompositeChangeRequiresGeometryUpdate):
+        * rendering/RenderLayerModelObject.cpp:
+        (WebCore::RenderLayerModelObject::applySVGTransform const):
+        * rendering/style/RenderStyle.cpp:
+        (WebCore::RenderStyle::computePerspectiveOrigin const):
+        (WebCore::RenderStyle::applyPerspective const):
+        (WebCore::RenderStyle::computeTransformOrigin const):
+        (WebCore::RenderStyle::applyTransformOrigin const):
+        (WebCore::RenderStyle::unapplyTransformOrigin const):
+        (WebCore::RenderStyle::applyTransform const):
+        (WebCore::RenderStyle::applyMotionPathTransform const):
+        * rendering/style/RenderStyle.h:
+        * svg/SVGGraphicsElement.cpp:
+        (WebCore::SVGGraphicsElement::animatedLocalTransform const):
+
+2022-04-07  Nikolas Zimmermann  <nzimmermann@igalia.com>
+
         Unify reference box / CTM computation in RenderLayer
         https://bugs.webkit.org/show_bug.cgi?id=237701
 
