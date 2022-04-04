@@ -1321,6 +1321,15 @@ FloatRect RenderLayer::referenceBoxRectForPainting(CSSBoxType boxType, const Lay
     return snapRectToDevicePixels(LayoutRect(referenceBoxRect(boxType, offsetFromRoot, rootRelativeBounds)), renderer().document().deviceScaleFactor());
 }
 
+FloatRect RenderLayer::transformReferenceBoxRect(const RenderStyle& style) const
+{
+    if (auto referenceBoxRect = renderer().transformReferenceBoxFloatRect(style))
+        return referenceBoxRect.value();
+    if (auto referenceBoxRect = renderer().transformReferenceBoxLayoutRect(style))
+        return referenceBoxRect.value();
+    return { };
+}
+
 FloatRect RenderLayer::transformReferenceBoxRectForPainting(const RenderStyle& style) const
 {
     if (auto referenceBoxRect = renderer().transformReferenceBoxFloatRect(style))
@@ -1332,7 +1341,7 @@ FloatRect RenderLayer::transformReferenceBoxRectForPainting(const RenderStyle& s
 
 void RenderLayer::updateTransformFromStyle(TransformationMatrix& transform, const RenderStyle& style, OptionSet<RenderStyle::TransformOperationOption> options) const
 {
-    renderer().applyTransform(*m_transform, style, transformReferenceBoxRectForPainting(style), options);
+    renderer().applyTransform(transform, style, transformReferenceBoxRectForPainting(style), options);
     makeMatrixRenderable(transform, canRender3DTransforms());
 }
 
@@ -1793,45 +1802,68 @@ bool RenderLayer::updateLayerPosition(OptionSet<UpdateLayerPositionsFlag>* flags
     return positionOrOffsetChanged;
 }
 
-TransformationMatrix RenderLayer::perspectiveTransform(const LayoutRect& layerRect) const
+TransformationMatrix RenderLayer::perspectiveTransform() const
 {
-    // FIXME: [LBSE] Upstream transform support for RenderSVGModelObject derived renderers
-    if (!is<RenderBox>(renderer()))
+    if (!renderer().hasTransformRelatedProperty())
         return { };
 
-    auto& renderBox = downcast<RenderBox>(renderer());
-    if (!renderBox.hasTransformRelatedProperty())
-        return { };
-
-    const auto& style = renderBox.style();
+    const auto& style = renderer().style();
     if (!style.hasPerspective())
         return { };
 
-    auto deviceScaleFactor = renderBox.document().deviceScaleFactor();
-    auto referenceBoxRectForPainting = transformReferenceBoxRectForPainting(style);
-    // FIXME: [LBSE] Avoid pixel snapping in SVG subtree.
-    auto snappedLayerRect = snapRectToDevicePixels(layerRect, deviceScaleFactor);
+    auto transformReferenceBoxRect = transformReferenceBoxRectForPainting(style);
+    auto perspectiveOrigin = style.computePerspectiveOrigin(transformReferenceBoxRect);
 
-    auto perspectiveOrigin = referenceBoxRectForPainting.location() - toFloatSize(snappedLayerRect.location()) + floatPointForLengthPoint(style.perspectiveOrigin(), referenceBoxRectForPainting.size());
+    // In the regular case of a non-clipped, non-scrolled GraphicsLayer, all transformations
+    // (via CSS 'transform' / 'perspective') are applied with respect to a predefined anchor point,
+    // which depends on the chosen CSS 'transform-box' / 'transform-origin' properties.
+    //
+    // A transformation given by the CSS 'transform' property is applied, by translating
+    // to the 'transform origin', applying the transformation, and translating back.
+    // When an element specifies a CSS 'perspective' property, the perspective transformation matrix
+    // that's computed here is propagated to the GraphicsLayer by calling setChildrenTransform().
+    //
+    // However the GraphicsLayer platform implementations (e.g. CA on macOS) apply the children transform,
+    // defined on the parent, with respect to the anchor point of the parent, when rendering child elements.
+    // This is wrong, as the perspective transformation (applied to a child of the element defining the
+    // 3d effect), must be independant of the chosen transform-origin (the parents transform origin
+    // must not affect its children).
+    //
+    // To circumvent this, explicitely remove the transform-origin dependency in the perspective matrix.
+    auto transformOrigin = transformOriginForPainting();
 
-    // A perspective origin of 0,0 makes the vanishing point in the center of the element.
-    // We want it to be in the top-left, so subtract half the height and width.
-    perspectiveOrigin -= snappedLayerRect.size() / 2.0f;
+    TransformationMatrix transform;
+    style.unapplyTransformOrigin(transform, transformOrigin);
+    style.applyPerspective(transform, renderer(), perspectiveOrigin);
+    style.applyTransformOrigin(transform, transformOrigin);
+    return transform;
+}
 
-    TransformationMatrix t;
-    t.translate(perspectiveOrigin.x(), perspectiveOrigin.y());
-    t.applyPerspective(style.usedPerspective(renderer()));
-    t.translate(-perspectiveOrigin.x(), -perspectiveOrigin.y());
+FloatPoint3D RenderLayer::transformOriginForPainting() const
+{
+    if (!renderer().hasTransformRelatedProperty())
+        return { };
 
-    return t;
+    const auto& style = renderer().style();
+
+    if (auto referenceBoxRect = renderer().transformReferenceBoxLayoutRect(style)) {
+        auto origin = style.computeTransformOrigin(referenceBoxRect.value());
+        origin.setXY(roundPointToDevicePixels(LayoutPoint(origin.xy()), renderer().document().deviceScaleFactor()));
+        return origin;
+    }
+
+    if (auto referenceBoxRect = renderer().transformReferenceBoxFloatRect(style))
+        return style.computeTransformOrigin(referenceBoxRect.value());
+
+    ASSERT_NOT_REACHED();
+    return { };
 }
 
 FloatPoint RenderLayer::perspectiveOrigin() const
 {
     if (!renderer().hasTransformRelatedProperty())
         return { };
-    // FIXME: This uses the wrong, transform-box unaware, geometry.
-    return floatPointForLengthPoint(renderer().style().perspectiveOrigin(), rendererBorderBoxRect().size());
+    return floatPointForLengthPoint(renderer().style().perspectiveOrigin(), transformReferenceBoxRect(renderer().style()).size());
 }
 
 static inline bool isContainerForPositioned(RenderLayer& layer, PositionType position, bool establishesTopLayer)

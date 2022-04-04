@@ -1449,22 +1449,51 @@ bool RenderStyle::affectedByTransformOrigin() const
     return false;
 }
 
-FloatPoint3D RenderStyle::applyTransformOrigin(TransformationMatrix& transform, const FloatRect& boundingBox) const
+FloatPoint RenderStyle::computePerspectiveOrigin(const FloatRect& boundingBox) const
 {
-    // https://www.w3.org/TR/css-transforms-2/#ctm
-    // 2. Translate by the computed X, Y, and Z values of transform-origin.
+    return boundingBox.location() + floatPointForLengthPoint(perspectiveOrigin(), boundingBox.size());
+}
+
+void RenderStyle::applyPerspective(TransformationMatrix& transform, const RenderObject& renderer, const FloatPoint& originTranslate) const
+{
+    // https://www.w3.org/TR/css-transforms-2/#perspective
+    // The perspective matrix is computed as follows:
+    // 1. Start with the identity matrix.
+
+    // 2. Translate by the computed X and Y values of perspective-origin
+    transform.translate(originTranslate.x(), originTranslate.y());
+
+    // 3. Multiply by the matrix that would be obtained from the perspective() transform function, where the length is provided by the value of the perspective property
+    transform.applyPerspective(usedPerspective(renderer));
+
+    // 4. Translate by the negated computed X and Y values of perspective-origin
+    transform.translate(-originTranslate.x(), -originTranslate.y());
+}
+
+FloatPoint3D RenderStyle::computeTransformOrigin(const FloatRect& boundingBox) const
+{
     FloatPoint3D originTranslate;
     originTranslate.setXY(boundingBox.location() + floatPointForLengthPoint(transformOriginXY(), boundingBox.size()));
     originTranslate.setZ(transformOriginZ());
+    return originTranslate;
+}
+
+FloatPoint3D RenderStyle::applyTransformOrigin(TransformationMatrix& transform, const FloatRect& boundingBox) const
+{
+    auto originTranslate = computeTransformOrigin(boundingBox);
     if (!originTranslate.isZero())
         transform.translate3d(originTranslate.x(), originTranslate.y(), originTranslate.z());
     return originTranslate;
 }
 
+void RenderStyle::applyTransformOrigin(TransformationMatrix& transform, const FloatPoint3D& originTranslate) const
+{
+    if (!originTranslate.isZero())
+        transform.translate3d(originTranslate.x(), originTranslate.y(), originTranslate.z());
+}
+
 void RenderStyle::unapplyTransformOrigin(TransformationMatrix& transform, const FloatPoint3D& originTranslate) const
 {
-    // https://www.w3.org/TR/css-transforms-2/#ctm
-    // 8. Translate by the negated computed X, Y and Z values of transform-origin.
     if (!originTranslate.isZero())
         transform.translate3d(-originTranslate.x(), -originTranslate.y(), -originTranslate.z());
 }
@@ -1563,7 +1592,7 @@ void RenderStyle::applyMotionPathTransform(TransformationMatrix& transform, cons
     transform.translate(traversalState.current().x(), traversalState.current().y());
 
     // Shift element to the anchor specified by offset-anchor.
-    auto transformOrigin = floatPointForLengthPoint(transformOriginXY(), boundingBox.size()) + boundingBox.location();
+    auto transformOrigin = computeTransformOrigin(boundingBox).xy();
     auto anchor = transformOrigin;
     if (!offsetAnchor().x().isAuto())
         anchor = floatPointForLengthPoint(offsetAnchor(), boundingBox.size()) + boundingBox.location();

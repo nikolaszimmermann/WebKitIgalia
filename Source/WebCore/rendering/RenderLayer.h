@@ -702,6 +702,8 @@ public:
     FloatRect referenceBoxRect(CSSBoxType, const LayoutSize& offsetFromRoot, const LayoutRect& rootRelativeBounds) const;
     // Device pixel snapped 'reference box' according to CSS Transforms Module Level 1.
     FloatRect referenceBoxRectForPainting(CSSBoxType, const LayoutSize& offsetFromRoot, const LayoutRect& rootRelativeBounds) const;
+    // 'transform reference box' according to CSS Transforms Module Level 1.
+    FloatRect transformReferenceBoxRect(const RenderStyle&) const;
     // Device pixel snapped 'transform reference box' according to CSS Transforms Module Level 1.
     FloatRect transformReferenceBoxRectForPainting(const RenderStyle&) const;
 
@@ -742,10 +744,11 @@ public:
     TransformationMatrix renderableTransform(OptionSet<PaintBehavior>) const;
     
     // Get the perspective transform, which is applied to transformed sublayers.
-    // Returns true if the layer has a -webkit-perspective.
+    // Returns true if the layer has a perspective.
     // Note that this transform has the perspective-origin baked in.
-    TransformationMatrix perspectiveTransform(const LayoutRect& layerRect) const;
+    TransformationMatrix perspectiveTransform() const;
     FloatPoint perspectiveOrigin() const;
+    FloatPoint3D transformOriginForPainting() const;
     bool preserves3D() const { return renderer().style().preserves3D(); }
     bool has3DTransform() const { return m_transform && !m_transform->isAffine(); }
     bool hasTransformedAncestor() const { return m_hasTransformedAncestor; }
