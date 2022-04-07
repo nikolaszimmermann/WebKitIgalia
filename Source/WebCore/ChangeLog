@@ -1,3 +1,10 @@
+2022-04-07  Carlos Garcia Campos  <cgarcia@igalia.com>
+
+        Unreviewed. [GStreamer] Fix compile warning
+
+        * Modules/mediastream/gstreamer/GStreamerPeerConnectionBackend.cpp:
+        (WebCore::gstreamerRtpCapatiblities): Initialize RTCRtpCodecCapability::channels.
+
 2022-04-08  Rob Buis  <rbuis@igalia.com>
 
         Take top layers into account in addLayers/removeLayers
