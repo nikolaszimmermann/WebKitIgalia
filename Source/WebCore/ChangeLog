@@ -1,5 +1,62 @@
 2022-04-25  Nikolas Zimmermann  <nzimmermann@igalia.com>
 
+        [LBSE] Activate text rendering, by re-using RenderSVGText
+        https://bugs.webkit.org/show_bug.cgi?id=239743
+
+        Reviewed by NOBODY (OOPS!).
+
+        Adapt RenderSVGText to be usable at the same time from legacy SVG engine (as
+        it is right now) and from LBSE. This requires minimal effort, since RenderSVGText
+        already inherited from RenderLayerModelObject, so there's no need for the creation
+        of LegacyRenderSVGText / RenderSVGText as separated legacy/LBSE implementations.
+
+        Most SVG 1.1 <text> testcases already pass out of the box with this change.
+        The next patch after text support will add a new 'macos-wk2-lbse-xxx' specific
+        platform baseline, so that we can run tests LBSE againt iself (finally we can
+        include the progressions in the form of TestExpectation file changes, once a certain
+        patch implements a new feature in LBSE. This makes sense now as enough is upstreamed
+        that a considerable amount of the SVG 1.1 testsuite already passes pixel perfect.
+
+        Covered by existing tests, no change in behaviour. (However testability for LBSE is ready soon!).
+
+        * rendering/RenderLayerModelObject.cpp:
+        (WebCore::RenderLayerModelObject::computeVisibleRectInSVGContainer const):
+        * rendering/RenderObject.cpp:
+        (WebCore::objectIsRelayoutBoundary):
+        * rendering/svg/RenderSVGBlock.cpp:
+        (WebCore::RenderSVGBlock::updateFromStyle):
+        (WebCore::RenderSVGBlock::absoluteRects const):
+        (WebCore::RenderSVGBlock::absoluteQuads const):
+        (WebCore::RenderSVGBlock::styleDidChange):
+        (WebCore::RenderSVGBlock::computeOverflow):
+        (WebCore::RenderSVGBlock::clippedOverflowRect const):
+        (WebCore::RenderSVGBlock::computeVisibleRectInContainer const):
+        (WebCore::RenderSVGBlock::computeFloatVisibleRectInContainer const):
+        (WebCore::RenderSVGBlock::pushMappingToContainer const):
+        (WebCore::RenderSVGBlock::offsetFromContainer const):
+        (WebCore::RenderSVGBlock::nodeAtPoint): Deleted.
+        * rendering/svg/RenderSVGBlock.h:
+        * rendering/svg/RenderSVGText.cpp:
+        (WebCore::RenderSVGText::RenderSVGText):
+        (WebCore::RenderSVGText::layout):
+        (WebCore::RenderSVGText::nodeAtFloatPoint):
+        (WebCore::RenderSVGText::nodeAtPoint):
+        (WebCore::RenderSVGText::paint):
+        (WebCore::RenderSVGText::repaintRectInLocalCoordinates const):
+        (WebCore::RenderSVGText::updatePositionAndOverflow):
+        (WebCore::RenderSVGText::absoluteQuads const): Deleted.
+        * rendering/svg/RenderSVGText.h:
+        * rendering/svg/SVGRootInlineBox.cpp:
+        (WebCore::SVGRootInlineBox::renderSVGText const):
+        (WebCore::SVGRootInlineBox::paint):
+        (WebCore::SVGRootInlineBox::layoutRootBox):
+        (WebCore::SVGRootInlineBox::renderSVGText): Deleted.
+        * rendering/svg/SVGRootInlineBox.h:
+        * svg/SVGElement.cpp:
+        (WebCore::createSVGLayerAwareElementSet):
+
+2022-04-25  Nikolas Zimmermann  <nzimmermann@igalia.com>
+
         [LBSE] Fix origin of transformations in SVG
         https://bugs.webkit.org/show_bug.cgi?id=239717
 
