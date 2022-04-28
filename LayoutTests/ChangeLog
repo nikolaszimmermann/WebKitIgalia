@@ -1,3 +1,628 @@
+2022-04-28  Nikolas Zimmermann  <nzimmermann@igalia.com>
+
+        [LBSE] Run layout tests with LBSE activated
+        https://bugs.webkit.org/show_bug.cgi?id=239764
+
+        Reviewed by NOBODY (OOPS!).
+
+        This patch adds two new baselines, that are helpful for LBSE development.
+
+        The intention of the patch is to be able to
+
+        a) Run pixel tests with legacy SVG engine that pass 100% (... on my machine; no intention to
+           get pixel tests running' globablly, but it's very helpful for that kind of SVG development).
+
+           --> Generate svg/W3C-SVG-1.1 pixel test baseline using my M1 machine running latest macOS Monterey
+               and only add the *expected.png* files as new 'mac-monterey-wk2-pixel' baseline
+
+               $ run-webkit-tests --new-baseline --pixel-tests svg/W3C-SVG-1.1
+               $ mv LayoutTests/platform/mac-monterey-wk2 LayoutTests/platform/mac-monterey-wk2-pixel
+
+        b) Run pixel tests wtih LBSE
+
+           LBSE does not need a new pixel test baseline, instead we should match what the legacy engine
+           produces, only the text dumps are different, due to inherit differences between legacy/LBSE,
+           such as an additional RenderLayer structure that's now included in the text dumps.
+
+           --> Generate svg/W3C-SVG-1.1 text baseline using my M1 machine running latest macOS Monterey
+               and *LBSE activated* and make them available as new 'mac-monterey-wk2-lbse-text' baseline.
+
+               $ run-webkit-tests --new-baseline --internal-feature=LayerBasedSVGEngineEnabled=true svg/W3C-SVG-1.1
+               $ mv LayoutTests/platform/mac-monterey-wk2 LayoutTests/platform/mac-monterey-wk2-lbse-text
+
+        Armed with the new baselines we can now perform testing in three combinations:
+
+        1. Run pixel tests using legacy SVG engine
+
+           $ run-webkit-tests --additional-platform-directory=$PWD/LayoutTests/platform/mac-monterey-wk2-pixel \
+                               --pixel-tests --tolerance=0 svg/W3C-SVG-1.1
+
+           By construction, this should succeed.
+
+        2. Run pixel tests using LBSE
+
+           $ run-webkit-tests --additional-platform-directory=$PWD/LayoutTests/platform/mac-monterey-wk2-pixel \
+                              --additional-platform-directory=$PWD/LayoutTests/platform/mac-monterey-wk2-lbse-text \
+                              --additional-expectations=$PWD/LayoutTests/platform/mac-monterey-wk2-lbse-text/TestExpectations \
+                              --pixel-tests --tolerance=0 --internal-feature=LayerBasedSVGEngineEnabled=true svg/W3C-SVG-1.1
+
+           The 'TestExpectations' file shall reflect the curent state of LBSE, thus this is always expected to succeed.
+
+        3. Run A/B testing legacy SVG engine. vs LBSE
+
+           $ run-webkit-tests --self-compare-with-header=LayerBasedSVGEngineEnabled=true svg/W3C-SVG-1.1
+
+           The new very helpful A/B testing, reveals that LBSE matches 66/278 tests pixel perfect of the SVG 1.1 test suite.
+           It ignores all existing test expectations and allows us to cross-check the TestExpectations file is correct:
+
+           $ cat LayoutTests/platform/mac-monterey-wk2-lbse-text/TestExpectations | grep -v "\[ Pass \]" | grep -v '^#' | wc -l
+                  212
+
+           $ cat LayoutTests/platform/mac-monterey-wk2-lbse-text/TestExpectations | grep "\[ Pass \]" | wc -l
+                  66
+
+           That perfectly matches the expectations.
+
+        Evertything is ready to run tests on dedicated bots and integrate LBSE in upstream CI.
+
+        * platform/mac-monterey-wk2-lbse-text/TestExpectations: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-04-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-05-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-06-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-07-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-08-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-09-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-10-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-11-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-12-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-13-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-14-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-15-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-16-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-17-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-18-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-19-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-20-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-21-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-22-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-23-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-24-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-25-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-26-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-27-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-28-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-29-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-30-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-31-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-32-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-33-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-34-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-36-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-37-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-39-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-40-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-41-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-44-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-46-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-52-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-60-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-61-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-62-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-63-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-64-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-65-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-66-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-67-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-68-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-69-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-70-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-77-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-78-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-80-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-81-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-82-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-83-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-84-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/animate-elem-85-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/color-prof-01-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/color-prop-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/color-prop-02-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/color-prop-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-coord-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-coord-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-trans-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-trans-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-trans-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-trans-04-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-trans-05-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-trans-06-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-units-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-units-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-units-03-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-viewattr-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-viewattr-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/coords-viewattr-03-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/extend-namespace-01-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-blend-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-color-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-composite-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-comptran-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-conv-01-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-diffuse-01-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-displace-01-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-example-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-felem-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-gauss-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-image-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-light-01-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-light-04-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-morph-01-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-offset-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-specular-01-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-tile-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-turb-01-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/filters-turb-02-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/fonts-desc-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/fonts-elem-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/fonts-elem-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/fonts-elem-03-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/fonts-elem-04-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/fonts-elem-05-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/fonts-elem-06-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/fonts-elem-07-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/fonts-glyph-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/fonts-glyph-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/fonts-kern-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/interact-cursor-01-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/interact-dom-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/interact-events-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/interact-order-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/interact-order-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/interact-order-03-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/interact-zoom-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/linking-a-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/linking-a-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/linking-a-03-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/linking-a-04-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/linking-a-05-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/linking-a-07-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/linking-uri-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/linking-uri-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/linking-uri-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/masking-intro-01-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/masking-mask-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/masking-opacity-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/masking-path-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/masking-path-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/masking-path-03-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/masking-path-04-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/masking-path-05-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/metadata-example-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-fill-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-fill-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-fill-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-fill-04-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-fill-05-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-marker-01-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-marker-02-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-marker-03-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-render-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-stroke-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-stroke-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-stroke-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-stroke-04-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/painting-stroke-07-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-03-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-04-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-05-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-06-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-07-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-08-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-09-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-10-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-12-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-13-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-14-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/paths-data-15-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-03-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-04-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-05-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-06-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-07-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-08-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-09-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-10-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-11-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-12-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-13-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-14-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-15-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-16-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-17-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-18-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-grad-19-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/pservers-pattern-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/render-elems-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/render-elems-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/render-elems-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/render-elems-06-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/render-elems-07-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/render-elems-08-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/render-groups-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/render-groups-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/script-handle-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/script-handle-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/script-handle-03-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/script-handle-04-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/shapes-circle-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/shapes-circle-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/shapes-ellipse-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/shapes-ellipse-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/shapes-intro-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/shapes-line-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/shapes-polygon-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/shapes-polyline-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/shapes-rect-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/shapes-rect-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-cond-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-cond-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-cond-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-defs-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-dom-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-dom-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-dom-03-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-dom-04-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-dom-05-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-dom-06-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-frag-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-frag-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-frag-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-frag-04-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-frag-05-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-frag-06-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-group-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-group-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-group-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-image-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-image-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-image-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-image-04-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-image-05-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-image-06-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-image-07-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-image-08-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-image-09-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-image-10-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-symbol-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-use-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-use-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/struct-use-05-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/styling-css-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/styling-css-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/styling-css-03-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/styling-css-04-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/styling-css-05-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/styling-css-06-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/styling-inherit-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/styling-pres-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-align-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-align-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-align-03-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-align-04-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-align-05-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-align-06-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-align-08-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-altglyph-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-deco-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-fonts-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-fonts-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-fonts-03-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-intro-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-intro-02-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-intro-03-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-intro-04-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-intro-05-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-path-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-spacing-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-text-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-text-03-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-text-04-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-text-05-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-text-06-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-text-07-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-text-08-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-tref-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-tselect-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-tselect-02-f-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-tspan-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-ws-01-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/text-ws-02-t-expected.txt: Added.
+        * platform/mac-monterey-wk2-lbse-text/svg/W3C-SVG-1.1/types-basicDOM-01-b-expected.txt: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-04-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-05-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-06-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-07-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-08-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-09-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-10-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-11-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-12-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-13-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-14-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-15-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-16-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-17-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-18-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-19-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-20-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-21-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-22-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-23-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-24-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-25-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-26-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-27-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-28-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-29-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-30-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-31-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-32-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-33-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-34-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-36-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-37-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-39-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-40-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-41-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-44-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-46-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-52-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-60-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-61-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-62-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-63-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-64-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-65-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-66-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-67-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-68-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-69-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-70-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-77-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-78-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-80-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-81-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-82-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-83-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-84-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/animate-elem-85-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/color-prof-01-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/color-prop-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/color-prop-02-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/color-prop-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-coord-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-coord-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-trans-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-trans-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-trans-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-trans-04-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-trans-05-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-trans-06-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-units-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-units-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-units-03-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-viewattr-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-viewattr-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/coords-viewattr-03-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/extend-namespace-01-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-blend-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-color-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-composite-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-comptran-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-conv-01-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-diffuse-01-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-displace-01-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-example-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-felem-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-gauss-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-image-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-light-01-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-light-04-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-morph-01-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-offset-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-specular-01-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-tile-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-turb-01-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/filters-turb-02-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/fonts-desc-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/fonts-elem-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/fonts-elem-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/fonts-elem-03-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/fonts-elem-04-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/fonts-elem-05-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/fonts-elem-06-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/fonts-elem-07-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/fonts-glyph-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/fonts-glyph-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/fonts-kern-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/interact-cursor-01-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/interact-dom-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/interact-events-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/interact-order-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/interact-order-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/interact-order-03-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/interact-zoom-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/linking-a-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/linking-a-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/linking-a-03-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/linking-a-04-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/linking-a-05-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/linking-a-07-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/linking-uri-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/linking-uri-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/linking-uri-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/masking-intro-01-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/masking-mask-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/masking-opacity-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/masking-path-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/masking-path-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/masking-path-03-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/masking-path-04-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/masking-path-05-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/metadata-example-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-fill-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-fill-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-fill-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-fill-04-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-fill-05-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-marker-01-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-marker-02-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-marker-03-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-render-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-stroke-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-stroke-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-stroke-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-stroke-04-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/painting-stroke-07-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-03-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-04-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-05-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-06-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-07-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-08-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-09-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-10-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-12-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-13-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-14-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/paths-data-15-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-03-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-04-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-05-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-06-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-07-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-08-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-09-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-10-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-11-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-12-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-13-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-14-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-15-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-16-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-17-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-18-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-grad-19-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/pservers-pattern-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/render-elems-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/render-elems-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/render-elems-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/render-elems-06-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/render-elems-07-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/render-elems-08-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/render-groups-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/render-groups-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/script-handle-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/script-handle-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/script-handle-03-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/script-handle-04-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/shapes-circle-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/shapes-circle-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/shapes-ellipse-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/shapes-ellipse-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/shapes-intro-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/shapes-line-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/shapes-polygon-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/shapes-polyline-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/shapes-rect-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/shapes-rect-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-cond-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-cond-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-cond-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-defs-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-dom-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-dom-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-dom-03-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-dom-04-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-dom-05-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-dom-06-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-frag-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-frag-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-frag-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-frag-04-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-frag-05-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-frag-06-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-group-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-group-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-group-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-image-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-image-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-image-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-image-04-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-image-05-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-image-06-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-image-07-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-image-08-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-image-09-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-image-10-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-symbol-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-use-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-use-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/struct-use-05-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/styling-css-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/styling-css-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/styling-css-03-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/styling-css-04-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/styling-css-05-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/styling-css-06-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/styling-inherit-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/styling-pres-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-align-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-align-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-align-03-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-align-04-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-align-05-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-align-06-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-align-08-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-altglyph-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-deco-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-fonts-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-fonts-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-fonts-03-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-intro-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-intro-02-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-intro-03-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-intro-04-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-intro-05-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-path-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-spacing-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-text-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-text-03-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-text-04-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-text-05-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-text-06-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-text-07-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-text-08-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-tref-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-tselect-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-tselect-02-f-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-tspan-01-b-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-ws-01-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/text-ws-02-t-expected.png: Added.
+        * platform/mac-monterey-wk2-pixel/svg/W3C-SVG-1.1/types-basicDOM-01-b-expected.png: Added.
+
 2022-04-28  Kimmo Kinnunen  <kkinnunen@apple.com>
 
         IPC testing API should have the ability to test IPC::Connection send and receive through IPC::Connection
