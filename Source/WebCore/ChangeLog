@@ -1,5 +1,20 @@
 2022-05-16  Nikolas Zimmermann  <nzimmermann@igalia.com>
 
+        [LBSE] ENABLE_LAYER_BASED_SVG_ENGINE needs to match for iOS and macOS
+        https://bugs.webkit.org/show_bug.cgi?id=239877
+        <rdar://problem/92829309>
+
+        Reviewed by NOBODY (OOPS!).
+
+        hasTransform() now needs hasSVGTransform(), when in turn uses rareData(), which
+        is not exported by WebCore at present breaking tvOS/watchOS/iOS builds, fix that.
+
+        Covered by existing tests, no change in behaviour.
+
+        * rendering/RenderObject.h:
+
+2022-05-16  Nikolas Zimmermann  <nzimmermann@igalia.com>
+
         [LBSE] Activate text rendering, by re-using RenderSVGText
         https://bugs.webkit.org/show_bug.cgi?id=239743
 
